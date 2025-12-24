@@ -8,7 +8,7 @@ import java.util.Scanner;
  *
  * Usage: java Client
  */
-public class Client {
+public class NodeCLI {
 
     private static Node currentNode = null;
     private static long currentNodeId = -1;  // Numeric ID (long)

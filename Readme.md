@@ -26,7 +26,7 @@ lamport-project/
 │   │   ├── NodeImpl.java      # Node implementation (basic version)
 │   │   └── Server.java        # Server to start and register nodes
 │   └── client/
-│       └── Client.java        # Interactive client for testing
+│       └── NodeCLI.java        # Interactive client for testing
 └── README.md
 ```
 
@@ -100,13 +100,13 @@ Open another terminal for the **interactive client**:
 
 ```bash
 cd lamport-project/src
-java Client
+java NodeCLI
 ```
 
 You'll see the interactive prompt:
 ```
 =================================================
-Distributed System - Interactive Client
+Distributed System - Interactive NodeCLI
 =================================================
 
 Available commands:
@@ -252,8 +252,8 @@ java server.Server 1100 nodeB
 # Terminal 3: nodeC
 java server.Server 1101 nodeC
 
-# Terminal 4: Client - build topology and test
-java Client
+# Terminal 4: NodeCLI - build topology and test
+java NodeCLI
 > connect localhost 1099 nodeA
 > addnode localhost 1100 nodeB
 > addnode localhost 1101 nodeC
