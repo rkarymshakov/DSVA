@@ -1,5 +1,16 @@
 # Lamport Mutual Exclusion - Distributed System Project
 
+---
+
+**Algorithm:** Lamport's Mutual Exclusion  
+**Problem Type:** Exclusive Access  
+**Topology:** Complete Graph  
+**Language:** Java  
+**Communication:** RMI  
+**Functionality:** Shared Variable
+
+---
+
 ## Project Overview
 This project implements Lamport's distributed mutual exclusion algorithm with shared variable functionality using Java RMI.
 
@@ -275,14 +286,3 @@ java client.Client
 - [ ] REST API (TODO)
 - [ ] File logging (TODO)
 - [ ] Batch mode (TODO)
-
----
-
-**Author:** Your Name  
-**Course:** Distributed Systems  
-**Algorithm:** Lamport's Mutual Exclusion  
-**Problem Type:** Exclusive Access  
-**Topology:** Complete Graph  
-**Language:** Java  
-**Communication:** RMI  
-**Functionality:** Shared Variable
