@@ -66,19 +66,19 @@ Open **separate terminal windows** for each node.
 **Terminal 1 - Start Node A on port 1099:**
 ```bash
 cd lamport-project/src
-java server.Server 1099 nodeA
+java NodeRunner 1099 nodeA
 ```
 
 **Terminal 2 - Start Node B on port 1100:**
 ```bash
 cd lamport-project/src
-java server.Server 1100 nodeB
+java NodeRunner 1100 nodeB
 ```
 
 **Terminal 3 - Start Node C on port 1101:**
 ```bash
 cd lamport-project/src
-java server.Server 1101 nodeC
+java NodeRunner 1101 nodeC
 ```
 
 Each node will display:
@@ -244,13 +244,13 @@ Node Status:
 
 ```bash
 # Terminal 1: nodeA
-java server.Server 1099 nodeA
+java NodeRunner 1099 nodeA
 
 # Terminal 2: nodeB  
-java server.Server 1100 nodeB
+java NodeRunner 1100 nodeB
 
 # Terminal 3: nodeC
-java server.Server 1101 nodeC
+java NodeRunner 1101 nodeC
 
 # Terminal 4: NodeCLI - build topology and test
 java NodeCLI

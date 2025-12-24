@@ -1,6 +1,3 @@
-package server;
-
-import compute.Node;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;

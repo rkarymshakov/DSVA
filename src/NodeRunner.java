@@ -1,7 +1,3 @@
-package server;
-
-import compute.Node;
-import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.net.InetAddress;
@@ -11,7 +7,7 @@ import java.net.InetAddress;
  * Usage: java server.Server <port>
  * Example: java server.Server 1099
  */
-public class Server {
+public class NodeRunner {
 
     public static void main(String[] args) {
         int port = 2010;
