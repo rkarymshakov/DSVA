@@ -107,12 +107,14 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void addNode(String nodeId, Node nodeRef) throws RemoteException {
+        incrementClock();
         knownNodes.put(nodeId, nodeRef);
         log("Added node to topology: " + nodeId + " (Total nodes: " + knownNodes.size() + ")");
     }
 
     @Override
     public void removeNode(String nodeId) throws RemoteException {
+        incrementClock();
         knownNodes.remove(nodeId);
         log("Removed node from topology: " + nodeId + " (Total nodes: " + knownNodes.size() + ")");
     }
@@ -152,18 +154,21 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public synchronized int getSharedVariable() throws RemoteException {
+        incrementClock();
         log("Reading shared variable: " + sharedVariable);
         return sharedVariable;
     }
 
     @Override
     public synchronized void setSharedVariable(int value) throws RemoteException {
+        incrementClock();
         log("Writing shared variable: " + sharedVariable + " -> " + value);
         sharedVariable = value;
     }
 
     @Override
     public void setMessageDelayMs(int delayMs) throws RemoteException {
+        incrementClock();
         this.messageDelayMs = delayMs;
         log("Message delay set to: " + delayMs + "ms");
     }
@@ -185,6 +190,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void ping() throws RemoteException {
+        incrementClock();
         log("Ping received");
     }
 
