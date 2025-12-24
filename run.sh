@@ -1,6 +1,6 @@
 #!/bin/bash
-
-# Build and Run Script for Lamport Distributed System
+# Build and Run Script for Lamport Distributed Mutual Exclusion Project
+# Version for FLAT src/ structure + renamed NodeRunner & NodeCLI
 
 ACTION=$1
 NODE=$2
@@ -10,26 +10,26 @@ PORT=$3
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Get the script directory
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Project root directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Output directory for compiled classes
+OUTPUT_DIR="$SCRIPT_DIR/out"
 
 case $ACTION in
     build)
         echo -e "${BLUE}Building project...${NC}"
+        mkdir -p "$OUTPUT_DIR"
 
-        # Create out directory if it doesn't exist
-        mkdir -p "$SCRIPT_DIR/out"
-
-        # Compile from src to out
-        cd "$SCRIPT_DIR/src"
-        javac -d "$SCRIPT_DIR/out" compute/*.java server/*.java client/*.java
+        # Compile ALL .java files directly in src/ (flat structure)
+        javac -d "$OUTPUT_DIR" "$SCRIPT_DIR/src"/*.java
 
         if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✓ Build successful! Classes in $SCRIPT_DIR/out${NC}"
+            echo -e "${GREEN}✓ Build successful! Classes in $OUTPUT_DIR${NC}"
         else
-            echo -e "${RED}✗ Build failed!${NC}"
+            echo -e "${RED}✗ Build failed! Check if all .java files are in src/${NC}"
             exit 1
         fi
         ;;
@@ -40,55 +40,51 @@ case $ACTION in
             echo "Example: ./run.sh server nodeA 1099"
             exit 1
         fi
-        echo -e "${BLUE}Starting server: $NODE on port $PORT${NC}"
+        echo -e "${BLUE}Starting node: $NODE on port $PORT${NC}"
 
-        # Run from out directory where classes are
-        cd "$SCRIPT_DIR/out"
-        java server.Server $PORT $NODE
+        # Run NodeRunner (main class is now NodeRunner in package server)
+        java -cp "$OUTPUT_DIR" NodeRunner "$PORT" "$NODE"
         ;;
 
     client)
-        echo -e "${BLUE}Starting interactive client...${NC}"
-
-        # Run from out directory where classes are
-        cd "$SCRIPT_DIR/out"
-        java client.Client
+        echo -e "${BLUE}Starting interactive CLI client (NodeCLI)...${NC}"
+        java -cp "$OUTPUT_DIR" NodeCLI
         ;;
 
     clean)
         echo -e "${BLUE}Cleaning compiled files...${NC}"
-        rm -rf "$SCRIPT_DIR/out"
+        rm -rf "$OUTPUT_DIR"
         echo -e "${GREEN}✓ Clean complete!${NC}"
         ;;
 
     test)
-        echo -e "${BLUE}Running test scenario...${NC}"
-        echo "This will start 3 nodes. Open separate terminals and run:"
-        echo "  Terminal 1: ./run.sh server nodeA 1099"
-        echo "  Terminal 2: ./run.sh server nodeB 1100"
-        echo "  Terminal 3: ./run.sh server nodeC 1101"
-        echo "  Terminal 4: ./run.sh client"
+        echo -e "${BLUE}Test scenario instructions:${NC}"
+        echo "Open separate terminals:"
+        echo "  1) ./run.sh server nodeA 1099"
+        echo "  2) ./run.sh server nodeB 1100"
+        echo "  3) ./run.sh server nodeC 1101"
+        echo "  4) ./run.sh client"
+        echo ""
+        echo "In NodeCLI then:"
+        echo "  connect localhost 1099"
+        echo "  addnode localhost 1100"
+        echo "  addnode localhost 1101"
+        echo "  list"
         ;;
 
     *)
-        echo "Lamport Distributed System - Build and Run Script"
+        echo -e "${BLUE}Lamport Distributed Mutual Exclusion - Build & Run Script${NC}"
         echo ""
         echo "Usage:"
-        echo "  ./run.sh build                    - Compile the project"
-        echo "  ./run.sh server <name> <port>     - Start a server node"
-        echo "  ./run.sh client                   - Start interactive client"
-        echo "  ./run.sh clean                    - Remove compiled files"
+        echo "  ./run.sh build                    - Compile all .java from src/ to out/"
+        echo "  ./run.sh server <name> <port>     - Start one node (NodeRunner)"
+        echo "  ./run.sh client                   - Start interactive CLI (NodeCLI)"
+        echo "  ./run.sh clean                    - Delete out/"
         echo "  ./run.sh test                     - Show test instructions"
         echo ""
-        echo "Examples:"
-        echo "  ./run.sh build"
-        echo "  ./run.sh server nodeA 1099"
-        echo "  ./run.sh server nodeB 1100"
-        echo "  ./run.sh client"
-        echo ""
-        echo "Project structure:"
-        echo "  ./src/          - Source files"
-        echo "  ./out/          - Compiled classes (created by build)"
-        echo "  ./run.sh        - This script"
+        echo "Current assumptions:"
+        echo "  - All .java files are directly in src/ (flat structure)"
+        echo "  - Main node starter is NodeRunner"
+        echo "  - CLI is NodeCLI"
         ;;
 esac
