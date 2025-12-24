@@ -100,7 +100,7 @@ Open another terminal for the **interactive client**:
 
 ```bash
 cd lamport-project/src
-java client.Client
+java Client
 ```
 
 You'll see the interactive prompt:
@@ -253,7 +253,7 @@ java server.Server 1100 nodeB
 java server.Server 1101 nodeC
 
 # Terminal 4: Client - build topology and test
-java client.Client
+java Client
 > connect localhost 1099 nodeA
 > addnode localhost 1100 nodeB
 > addnode localhost 1101 nodeC

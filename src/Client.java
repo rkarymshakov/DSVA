@@ -1,5 +1,3 @@
-package client;
-
 import compute.Node;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -8,7 +6,7 @@ import java.util.Scanner;
 /**
  * Interactive client for testing the distributed system with numeric node IDs
  *
- * Usage: java client.Client
+ * Usage: java Client
  */
 public class Client {
 
