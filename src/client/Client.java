@@ -6,20 +6,20 @@ import java.rmi.registry.Registry;
 import java.util.Scanner;
 
 /**
- * Interactive client for testing the distributed system
+ * Interactive client for testing the distributed system with numeric node IDs
  *
  * Usage: java client.Client
  */
 public class Client {
 
     private static Node currentNode = null;
-    private static String currentNodeId = null;
+    private static long currentNodeId = -1;  // Numeric ID (long)
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
         System.out.println("=================================================");
-        System.out.println("Distributed System - Interactive Client");
+        System.out.println("Distributed System - Interactive Client (Numeric Node IDs)");
         System.out.println("=================================================");
         System.out.println();
 
@@ -39,19 +39,19 @@ public class Client {
             try {
                 switch (command) {
                     case "connect":
-                        if (parts.length < 4) {
-                            System.out.println("Usage: connect <hostname> <port> <nodeName>");
+                        if (parts.length < 3) {
+                            System.out.println("Usage: connect <hostname> <port>");
                             break;
                         }
-                        connect(parts[1], Integer.parseInt(parts[2]), parts[3]);
+                        connect(parts[1], Integer.parseInt(parts[2]));
                         break;
 
                     case "addnode":
-                        if (parts.length < 4) {
-                            System.out.println("Usage: addnode <hostname> <port> <nodeName>");
+                        if (parts.length < 3) {
+                            System.out.println("Usage: addnode <hostname> <port>");
                             break;
                         }
-                        addNode(parts[1], Integer.parseInt(parts[2]), parts[3]);
+                        addNode(parts[1], Integer.parseInt(parts[2]));
                         break;
 
                     case "list":
@@ -118,35 +118,36 @@ public class Client {
         }
     }
 
-    private static void connect(String hostname, int port, String nodeName) {
+    private static void connect(String hostname, int port) {
         try {
             Registry registry = LocateRegistry.getRegistry(hostname, port);
-            currentNode = (Node) registry.lookup(nodeName);
-            currentNodeId = currentNode.getNodeId();
-            System.out.println("✓ Connected to node: " + currentNodeId);
+            String registryName = String.valueOf(port);  // RMI registration name is port
+            currentNode = (Node) registry.lookup(registryName);
+            currentNodeId = currentNode.getNodeId();  // Get numeric long ID
+            System.out.println("✓ Connected to node ID: " + currentNodeId);
         } catch (Exception e) {
             System.err.println("✗ Connection failed: " + e.getMessage());
             currentNode = null;
-            currentNodeId = null;
+            currentNodeId = -1;
         }
     }
 
-    private static void addNode(String hostname, int port, String nodeName) {
+    private static void addNode(String hostname, int port) {
         if (currentNode == null) {
             System.out.println("✗ Not connected to any node. Use 'connect' first.");
             return;
         }
 
         try {
-            // Lookup the node to add
             Registry registry = LocateRegistry.getRegistry(hostname, port);
-            Node nodeToAdd = (Node) registry.lookup(nodeName);
-            String nodeToAddId = nodeToAdd.getNodeId();
+            String registryName = String.valueOf(port);
+            Node nodeToAdd = (Node) registry.lookup(registryName);
+            long nodeToAddId = nodeToAdd.getNodeId();  // Numeric ID
 
             // Add to current node's topology
             currentNode.addNode(nodeToAddId, nodeToAdd);
 
-            // Also add current node to the new node's topology (bidirectional)
+            // Bidirectional
             nodeToAdd.addNode(currentNodeId, currentNode);
 
             System.out.println("✓ Node added to topology: " + nodeToAddId);
@@ -164,12 +165,12 @@ public class Client {
 
         try {
             System.out.println("Known nodes in topology:");
-            java.util.List<String> nodes = currentNode.getKnownNodes();
+            java.util.List<Long> nodes = currentNode.getKnownNodes();
             if (nodes.isEmpty()) {
                 System.out.println("  (no other nodes)");
             } else {
-                for (String nodeId : nodes) {
-                    System.out.println("  - " + nodeId);
+                for (Long nodeId : nodes) {
+                    System.out.println("  - Node ID: " + nodeId);
                 }
             }
         } catch (Exception e) {
@@ -271,7 +272,7 @@ public class Client {
         }
 
         try {
-            // This is a placeholder - real implementation will be added with Lamport algorithm
+            // Placeholder - will be implemented later with Lamport
             System.out.println("Request CS (not yet implemented - Lamport algorithm pending)");
         } catch (Exception e) {
             System.err.println("✗ Error: " + e.getMessage());
@@ -285,7 +286,7 @@ public class Client {
         }
 
         try {
-            // This is a placeholder - real implementation will be added with Lamport algorithm
+            // Placeholder
             System.out.println("Release CS (not yet implemented - Lamport algorithm pending)");
         } catch (Exception e) {
             System.err.println("✗ Error: " + e.getMessage());
@@ -294,9 +295,9 @@ public class Client {
 
     private static void printHelp() {
         System.out.println("Available commands:");
-        System.out.println("  connect <host> <port> <name>  - Connect to a node");
-        System.out.println("  addnode <host> <port> <name>  - Add a node to topology");
-        System.out.println("  list                          - List all known nodes");
+        System.out.println("  connect <host> <port>         - Connect to a node (port is registry name)");
+        System.out.println("  addnode <host> <port>         - Add a node to topology");
+        System.out.println("  list                          - List all known nodes (numeric IDs)");
         System.out.println("  status                        - Show node status");
         System.out.println("  clock                         - Show logical clock");
         System.out.println("  getvar                        - Get shared variable value");

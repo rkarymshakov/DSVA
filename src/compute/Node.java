@@ -12,9 +12,9 @@ public interface Node extends Remote {
 
     // === Node identification ===
     /**
-     * Get unique identifier of this node (e.g., "nodeA@192.168.1.10:1099")
+     * Get unique numeric identifier of this node (generated from IP + port)
      */
-    String getNodeId() throws RemoteException;
+    long getNodeId() throws RemoteException;
 
     /**
      * Get the current logical clock value (Lamport timestamp)
@@ -24,21 +24,21 @@ public interface Node extends Remote {
     // === Topology management ===
     /**
      * Register another node in this node's topology
-     * @param nodeId Unique identifier of the node to add
+     * @param nodeId Unique numeric identifier of the node to add
      * @param nodeRef Remote reference to the node
      */
-    void addNode(String nodeId, Node nodeRef) throws RemoteException;
+    void addNode(long nodeId, Node nodeRef) throws RemoteException;
 
     /**
      * Remove a node from topology
-     * @param nodeId Identifier of node to remove
+     * @param nodeId Numeric identifier of node to remove
      */
-    void removeNode(String nodeId) throws RemoteException;
+    void removeNode(long nodeId) throws RemoteException;
 
     /**
-     * Get list of all known nodes in the system
+     * Get list of all known nodes in the system (their numeric IDs)
      */
-    List<String> getKnownNodes() throws RemoteException;
+    List<Long> getKnownNodes() throws RemoteException;
 
     // === Lamport's algorithm - Critical Section messages ===
     /**
@@ -46,41 +46,37 @@ public interface Node extends Remote {
      * @param requestingNodeId ID of the requesting node
      * @param timestamp Lamport timestamp of the request
      */
-    void requestCS(String requestingNodeId, int timestamp) throws RemoteException;
+    void requestCS(long requestingNodeId, int timestamp) throws RemoteException;
 
     /**
      * Reply to a critical section request
      * @param replyingNodeId ID of the node sending reply
      * @param timestamp Lamport timestamp of the reply
      */
-    void replyCS(String replyingNodeId, int timestamp) throws RemoteException;
+    void replyCS(long replyingNodeId, int timestamp) throws RemoteException;
 
     /**
      * Release critical section (broadcast to all nodes)
      * @param releasingNodeId ID of the node releasing CS
      * @param timestamp Lamport timestamp of the release
      */
-    void releaseCS(String releasingNodeId, int timestamp) throws RemoteException;
+    void releaseCS(long releasingNodeId, int timestamp) throws RemoteException;
 
     // === Shared Variable operations (executed in Critical Section) ===
     /**
      * Get the current value of the shared variable
-     * This should only be called when node is in critical section
      */
     int getSharedVariable() throws RemoteException;
 
     /**
      * Set the value of the shared variable
-     * This should only be called when node is in critical section
      * @param value New value for the shared variable
      */
     void setSharedVariable(int value) throws RemoteException;
 
     // === Testing and simulation features ===
     /**
-     * Set artificial delay for message sending (in milliseconds)
-     * Used to simulate slow network and test concurrent situations
-     * @param delayMs Delay in milliseconds (0 = no delay)
+     * Set artificial delay for message sending/receiving (in milliseconds)
      */
     void setMessageDelayMs(int delayMs) throws RemoteException;
 
@@ -90,18 +86,9 @@ public interface Node extends Remote {
     int getMessageDelayMs() throws RemoteException;
 
     // === Status and debugging ===
-    /**
-     * Check if this node is currently in critical section
-     */
     boolean isInCriticalSection() throws RemoteException;
 
-    /**
-     * Get information about pending requests in the queue
-     */
     String getQueueStatus() throws RemoteException;
 
-    /**
-     * Ping - simple health check
-     */
     void ping() throws RemoteException;
 }

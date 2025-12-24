@@ -9,19 +9,18 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Basic implementation of Node interface
- * This is a foundation - Lamport algorithm logic will be added later
+ * Implementation of Node interface with Lamport mutual exclusion foundation
  */
 public class NodeImpl extends UnicastRemoteObject implements Node {
 
-    // Node identification
-    private final String nodeId;
+    // Node identification - numeric ID (like in example project)
+    private final long nodeId;
     private int logicalClock;
 
-    // Topology - complete graph (all nodes know each other)
-    private final Map<String, Node> knownNodes;
+    // Topology - complete graph (key = numeric node ID)
+    private final Map<Long, Node> knownNodes;
 
-    // Shared variable (simulated as local copy - in reality each node will sync this)
+    // Shared variable
     private int sharedVariable;
 
     // Critical section state
@@ -30,18 +29,14 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     // Message delay simulation
     private int messageDelayMs;
 
-    // Request queue for Lamport algorithm (will be implemented later)
+    // Request queue for Lamport algorithm
     private final PriorityQueue<Request> requestQueue;
 
     // Time formatter for logging
     private static final DateTimeFormatter timeFormatter =
             DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
-    /**
-     * Constructor
-     * @param nodeId Unique identifier (e.g., "nodeA@192.168.1.10:1099")
-     */
-    public NodeImpl(String nodeId) throws RemoteException {
+    public NodeImpl(long nodeId) throws RemoteException {
         super();
         this.nodeId = nodeId;
         this.logicalClock = 0;
@@ -51,37 +46,37 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         this.messageDelayMs = 0;
         this.requestQueue = new PriorityQueue<>();
 
-        log("Node created: " + nodeId);
+        log("Node created with ID: " + nodeId);
+    }
+
+    // === Generate numeric ID exactly like in example ===
+    public static long generateId(String ip, int port) {
+        String[] array = ip.split("\\.");
+        long id = 0;
+        for (String part : array) {
+            long temp = Long.parseLong(part);
+            id = (id * 1000) + temp;
+        }
+        id = id + (long) port * 1000000000000L;
+        return id;
     }
 
     // === Helper methods ===
 
-    /**
-     * Log message with timestamp
-     */
     private void log(String message) {
         String timestamp = LocalDateTime.now().format(timeFormatter);
-        System.out.println(String.format("[%s][LC=%d][%s] %s",
+        System.out.println(String.format("[%s][LC=%d][Node %d] %s",
                 timestamp, logicalClock, nodeId, message));
     }
 
-    /**
-     * Increment logical clock (Lamport rule)
-     */
     private synchronized void incrementClock() {
         logicalClock++;
     }
 
-    /**
-     * Update logical clock on message receive (Lamport rule: max(local, received) + 1)
-     */
     private synchronized void updateClock(int receivedTimestamp) {
         logicalClock = Math.max(logicalClock, receivedTimestamp) + 1;
     }
 
-    /**
-     * Simulate network delay if configured
-     */
     private void simulateDelay() {
         if (messageDelayMs > 0) {
             try {
@@ -96,7 +91,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     // === Node interface implementation ===
 
     @Override
-    public String getNodeId() throws RemoteException {
+    public long getNodeId() throws RemoteException {
         return nodeId;
     }
 
@@ -106,50 +101,46 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     @Override
-    public void addNode(String nodeId, Node nodeRef) throws RemoteException {
+    public void addNode(long otherNodeId, Node nodeRef) throws RemoteException {
         incrementClock();
-        knownNodes.put(nodeId, nodeRef);
-        log("Added node to topology: " + nodeId + " (Total nodes: " + knownNodes.size() + ")");
+        knownNodes.put(otherNodeId, nodeRef);
+        log("Added node " + otherNodeId + " (Total: " + knownNodes.size() + ")");
     }
 
     @Override
-    public void removeNode(String nodeId) throws RemoteException {
+    public void removeNode(long nodeId) throws RemoteException {
         incrementClock();
         knownNodes.remove(nodeId);
-        log("Removed node from topology: " + nodeId + " (Total nodes: " + knownNodes.size() + ")");
+        log("Removed node " + nodeId + " (Total nodes: " + knownNodes.size() + ")");
     }
 
     @Override
-    public List<String> getKnownNodes() throws RemoteException {
+    public List<Long> getKnownNodes() throws RemoteException {
         return new ArrayList<>(knownNodes.keySet());
     }
 
     @Override
-    public void requestCS(String requestingNodeId, int timestamp) throws RemoteException {
+    public void requestCS(long requestingNodeId, int timestamp) throws RemoteException {
         simulateDelay();
         updateClock(timestamp);
-        log("Received CS REQUEST from " + requestingNodeId + " with timestamp " + timestamp);
-
-        // TODO: Implement Lamport algorithm logic here
-        // For now, just acknowledge we received the request
+        log("Received CS REQUEST from node " + requestingNodeId + " with timestamp " + timestamp);
+        // TODO: Implement full Lamport logic here
     }
 
     @Override
-    public void replyCS(String replyingNodeId, int timestamp) throws RemoteException {
+    public void replyCS(long replyingNodeId, int timestamp) throws RemoteException {
         simulateDelay();
         updateClock(timestamp);
-        log("Received CS REPLY from " + replyingNodeId + " with timestamp " + timestamp);
-
-        // TODO: Implement Lamport algorithm logic here
+        log("Received CS REPLY from node " + replyingNodeId + " with timestamp " + timestamp);
+        // TODO: Implement full Lamport logic here
     }
 
     @Override
-    public void releaseCS(String releasingNodeId, int timestamp) throws RemoteException {
+    public void releaseCS(long releasingNodeId, int timestamp) throws RemoteException {
         simulateDelay();
         updateClock(timestamp);
-        log("Received CS RELEASE from " + releasingNodeId + " with timestamp " + timestamp);
-
-        // TODO: Implement Lamport algorithm logic here
+        log("Received CS RELEASE from node " + releasingNodeId + " with timestamp " + timestamp);
+        // TODO: Implement full Lamport logic here
     }
 
     @Override
@@ -194,35 +185,28 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         log("Ping received");
     }
 
-    /**
-     * Helper method to broadcast a message to all known nodes
-     */
+    // === Broadcast helper ===
     protected void broadcast(NodeOperation operation) {
-        for (Map.Entry<String, Node> entry : knownNodes.entrySet()) {
+        for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
             try {
                 operation.execute(entry.getKey(), entry.getValue());
             } catch (RemoteException e) {
-                log("ERROR: Failed to send message to " + entry.getKey() + ": " + e.getMessage());
+                log("ERROR: Failed to send to node " + entry.getKey() + ": " + e.getMessage());
             }
         }
     }
 
-    /**
-     * Functional interface for broadcast operations
-     */
     @FunctionalInterface
     protected interface NodeOperation {
-        void execute(String nodeId, Node node) throws RemoteException;
+        void execute(long nodeId, Node node) throws RemoteException;
     }
 
-    /**
-     * Inner class to represent a CS request (for priority queue)
-     */
+    // === Request class for priority queue ===
     protected static class Request implements Comparable<Request> {
-        final String nodeId;
+        final long nodeId;  // now long
         final int timestamp;
 
-        Request(String nodeId, int timestamp) {
+        Request(long nodeId, int timestamp) {
             this.nodeId = nodeId;
             this.timestamp = timestamp;
         }
@@ -232,13 +216,12 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             if (this.timestamp != other.timestamp) {
                 return Integer.compare(this.timestamp, other.timestamp);
             }
-            // If timestamps equal, use node ID for deterministic ordering
-            return this.nodeId.compareTo(other.nodeId);
+            return Long.compare(this.nodeId, other.nodeId);
         }
 
         @Override
         public String toString() {
-            return String.format("Request{node=%s, ts=%d}", nodeId, timestamp);
+            return String.format("Request{node=%d, ts=%d}", nodeId, timestamp);
         }
     }
 }
