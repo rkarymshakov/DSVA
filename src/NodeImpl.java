@@ -4,6 +4,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.io.FileWriter;
+import java.io.IOException;
 
 /**
  * Implementation of Node interface with Lamport mutual exclusion foundation
@@ -29,6 +31,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     // Request queue for Lamport algorithm
     private final PriorityQueue<Request> requestQueue;
 
+    // File logging
+    private FileWriter logWriter;
+
     // Time formatter for logging
     private static final DateTimeFormatter timeFormatter =
             DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
@@ -42,6 +47,14 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         this.inCriticalSection = false;
         this.messageDelayMs = 0;
         this.requestQueue = new PriorityQueue<>();
+
+        // Initialize log file
+        try {
+            this.logWriter = new FileWriter("node_" + nodeId + ".log", true);
+        } catch (IOException e) {
+            System.err.println("Failed to create log file for node " + nodeId + ": " + e.getMessage());
+            this.logWriter = null;
+        }
 
         log("Node created with ID: " + nodeId);
     }
@@ -62,8 +75,21 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     private void log(String message) {
         String timestamp = LocalDateTime.now().format(timeFormatter);
-        System.out.println(String.format("[%s][LC=%d][Node %d] %s",
-                timestamp, logicalClock, nodeId, message));
+        String logLine = String.format("[%s][LC=%d][Node %d] %s",
+                timestamp, logicalClock, nodeId, message);
+
+        // Write to console
+        System.out.println(logLine);
+
+        // Write to file
+        if (logWriter != null) {
+            try {
+                logWriter.write(logLine + "\n");
+                logWriter.flush();
+            } catch (IOException e) {
+                System.err.println("Failed to write to log file: " + e.getMessage());
+            }
+        }
     }
 
     private synchronized void incrementClock() {
@@ -180,6 +206,19 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void ping() throws RemoteException {
         incrementClock();
         log("Ping received");
+    }
+
+    // === Cleanup method ===
+    public void shutdown() throws RemoteException {
+        log("Node shutting down");
+        if (logWriter != null) {
+            try {
+                logWriter.close();
+                logWriter = null;
+            } catch (IOException e) {
+                System.err.println("Error closing log file: " + e.getMessage());
+            }
+        }
     }
 
     // === Broadcast helper ===

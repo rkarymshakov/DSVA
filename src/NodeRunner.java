@@ -40,6 +40,16 @@ public class NodeRunner {
             // Create the node instance with numeric ID
             NodeImpl nodeImpl = new NodeImpl(nodeId);
 
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    System.out.println("\nShutting down node...");
+                    nodeImpl.shutdown();
+                    System.out.println("Node shutdown complete.");
+                } catch (Exception e) {
+                    System.err.println("Error during shutdown: " + e.getMessage());
+                }
+            }));
+
             // Create or get RMI registry on specified port
             Registry registry;
             try {
