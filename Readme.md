@@ -14,11 +14,9 @@
 ## Project Overview
 This project implements Lamport's distributed mutual exclusion algorithm with shared variable functionality using Java RMI.
 
-**Current Status:** Basic RMI infrastructure (without Lamport algorithm implementation yet)
-
 ## Project Structure
 ```
-lamport-project/
+lamport-project/ (TODO: update structure)
 ├── src/
 │   ├── compute/
 │   │   └── Node.java          # Remote interface for distributed nodes
