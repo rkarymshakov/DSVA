@@ -31,13 +31,13 @@ case $ACTION in
         ;;
 
     server)
-        if [ -z "$NODE" ] || [ -z "$PORT" ]; then
-            echo "Usage: ./run-linux.sh server <nodeName> <port>"
-            echo "Example: ./run-linux.sh server nodeA 2010"
+        if [ -z "$PORT" ]; then
+            echo "Usage: ./run-linux.sh server <port>"
+            echo "Example: ./run-linux.sh server 2010"
             exit 1
         fi
 
-        echo "Starting node: $NODE on port $PORT"
+        echo "Starting node on port $PORT"
 
         # Get the VM's Host-only IP automatically
         HOST_IP=$(ip addr show enp0s8 | grep -oP 'inet \K[\d.]+' | head -1)
@@ -50,7 +50,7 @@ case $ACTION in
         fi
 
         # Run with RMI hostname set - CRITICAL FOR VMs
-        java -Djava.rmi.server.hostname="$HOST_IP" -cp "$OUTPUT_DIR" NodeRunner "$NODE" "$PORT" "$HOST_IP"
+        java -Djava.rmi.server.hostname="$HOST_IP" -cp "$OUTPUT_DIR" NodeRunner "$PORT" "$HOST_IP"
         ;;
 
     client)
