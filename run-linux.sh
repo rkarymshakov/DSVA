@@ -1,17 +1,17 @@
 #!/bin/bash
-# Linux version of Windows run.sh - Simple & minimal
 
 ACTION=$1
 NODE=$2
 PORT=$3
 
-# Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Project root directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 OUTPUT_DIR="$SCRIPT_DIR/out"
 
 case $ACTION in
@@ -19,8 +19,8 @@ case $ACTION in
         echo "Building project..."
         mkdir -p "$OUTPUT_DIR"
 
-        # Compile ALL .java files directly in src/
-        javac -d "$OUTPUT_DIR" "$SCRIPT_DIR/src"/*.java
+        # Compile ALL .java files
+        javac -d "$OUTPUT_DIR" "$SCRIPT_DIR/src/main/java/cz/ctu/fee/dsv/semework"/*.java
 
         if [ $? -eq 0 ]; then
             echo "✓ Build successful! Classes in $OUTPUT_DIR"
@@ -50,12 +50,12 @@ case $ACTION in
         fi
 
         # Run with RMI hostname set - CRITICAL FOR VMs
-        java -Djava.rmi.server.hostname="$HOST_IP" -cp "$OUTPUT_DIR" NodeRunner "$PORT" "$HOST_IP"
+        java -Djava.rmi.server.hostname="$HOST_IP" -cp "$OUTPUT_DIR" cz.ctu.fee.dsv.semework.NodeRunner "$PORT" "$HOST_IP"
         ;;
 
     client)
         echo "Starting interactive CLI client..."
-        java -cp "$OUTPUT_DIR" NodeCLI
+        java -cp "$OUTPUT_DIR" cz.ctu.fee.dsv.semework.NodeCLI
         ;;
 
     clean)

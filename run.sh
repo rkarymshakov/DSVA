@@ -1,12 +1,9 @@
 #!/bin/bash
-# Build and Run Script for Lamport Distributed Mutual Exclusion Project
-# Version for FLAT src/ structure + renamed NodeRunner & NodeCLI
 
 ACTION=$1
 NODE=$2
 PORT=$3
 
-# Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
@@ -15,7 +12,6 @@ NC='\033[0m'
 # Project root directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Output directory for compiled classes
 OUTPUT_DIR="$SCRIPT_DIR/out"
 
 case $ACTION in
@@ -23,8 +19,8 @@ case $ACTION in
         echo -e "${BLUE}Building project...${NC}"
         mkdir -p "$OUTPUT_DIR"
 
-        # Compile ALL .java files directly in src/ (flat structure)
-        javac -d "$OUTPUT_DIR" "$SCRIPT_DIR/src/main/java/cz/ctu/fee/dsv/semework/"/*.java
+        # Compile ALL .java files
+        javac -d "$OUTPUT_DIR" "$SCRIPT_DIR/src/main/java/cz/ctu/fee/dsv/semework"/*.java
 
         if [ $? -eq 0 ]; then
             echo -e "${GREEN}✓ Build successful! Classes in $OUTPUT_DIR${NC}"
