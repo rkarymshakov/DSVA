@@ -6,8 +6,8 @@ import java.net.InetAddress;
 
 /**
  * Server class to start a node and register it in RMI registry
- * Usage: java server.Server <port>
- * Example: java server.Server 1099
+ * Usage: java NodeRunner <port>
+ * Example: java NodeRunner 2010
  */
 public class NodeRunner {
 
