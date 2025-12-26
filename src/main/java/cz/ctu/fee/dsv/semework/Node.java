@@ -3,6 +3,7 @@ package cz.ctu.fee.dsv.semework;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Remote interface for distributed node implementing Lamport's mutual exclusion algorithm
@@ -22,6 +23,15 @@ public interface Node extends Remote {
     int getLogicalClock() throws RemoteException;
 
     // === Topology management ===
+    /**
+     * Join the network - returns map of all existing nodes
+     * Automatically establishes complete graph topology
+     * @param joiningNodeId ID of the joining node
+     * @param joiningNodeRef Reference to the joining node
+     * @return Map of all existing nodes (nodeId -> Node reference)
+     */
+    Map<Long, Node> join(long joiningNodeId, Node joiningNodeRef) throws RemoteException;
+
     /**
      * Register another node in this node's topology
      * @param nodeId Unique numeric identifier of the node to add

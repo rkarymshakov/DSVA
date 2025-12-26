@@ -145,6 +145,42 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     @Override
+    public Map<Long, Node> join(long joiningNodeId, Node joiningNodeRef) throws RemoteException {
+        incrementClock();
+        log("Node " + joiningNodeId + " is joining the network");
+
+        // Get a copy of current nodes to return to the joining node
+        Map<Long, Node> existingNodes = new HashMap<>(knownNodes);
+
+        // Add myself to the map so joining node knows about me too
+        existingNodes.put(this.nodeId, this);
+
+        // Add the joining node to my topology
+        knownNodes.put(joiningNodeId, joiningNodeRef);
+        log("Added joining node " + joiningNodeId + " to my topology");
+
+        // Broadcast to ALL existing nodes: add the new node to their topology
+        log("Broadcasting new node " + joiningNodeId + " to all existing nodes");
+        for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
+            long existingNodeId = entry.getKey();
+            Node existingNode = entry.getValue();
+
+            // Don't send to the joining node itself
+            if (existingNodeId != joiningNodeId) {
+                try {
+                    log("  Telling node " + existingNodeId + " to add node " + joiningNodeId);
+                    existingNode.addNode(joiningNodeId, joiningNodeRef);
+                } catch (RemoteException e) {
+                    log("  ERROR: Failed to notify node " + existingNodeId + ": " + e.getMessage());
+                }
+            }
+        }
+
+        log("Join complete. Returning " + existingNodes.size() + " existing nodes to joining node");
+        return existingNodes;
+    }
+
+    @Override
     public void requestCS(long requestingNodeId, int timestamp) throws RemoteException {
         simulateDelay();
         updateClock(timestamp);

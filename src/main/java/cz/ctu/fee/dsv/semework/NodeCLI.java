@@ -141,18 +141,35 @@ public class NodeCLI {
             Registry registry = LocateRegistry.getRegistry(hostname, port);
             String registryName = String.valueOf(port);
             Node nodeToAdd = (Node) registry.lookup(registryName);
-            long nodeToAddId = nodeToAdd.getNodeId();  // Numeric ID
+            long nodeToAddId = nodeToAdd.getNodeId();
 
-            // Add to current node's topology
-            currentNode.addNode(nodeToAddId, nodeToAdd);
+            System.out.println("═══════════════════════════════════════════════");
+            System.out.println("Adding node " + nodeToAddId + " to the network...");
+            System.out.println("═══════════════════════════════════════════════");
 
-            // Bidirectional
-            nodeToAdd.addNode(currentNodeId, currentNode);
+            // Call join on the connected node - it will broadcast to all existing nodes
+            System.out.println("Step 1: Calling join() on node " + currentNodeId);
+            java.util.Map<Long, Node> existingNodes = currentNode.join(nodeToAddId, nodeToAdd);
 
-            System.out.println("✓ Node added to topology: " + nodeToAddId);
-            System.out.println("  (Bidirectional connection established)");
+            System.out.println("Step 2: Received " + existingNodes.size() + " existing nodes");
+            for (Long id : existingNodes.keySet()) {
+                System.out.println("  - Node " + id);
+            }
+
+            // The joining node adds all existing nodes to its topology
+            System.out.println("Step 3: New node " + nodeToAddId + " adding all existing nodes to its topology");
+            for (java.util.Map.Entry<Long, Node> entry : existingNodes.entrySet()) {
+                System.out.println("  - Adding node " + entry.getKey() + " to node " + nodeToAddId);
+                nodeToAdd.addNode(entry.getKey(), entry.getValue());
+            }
+
+            System.out.println("═══════════════════════════════════════════════");
+            System.out.println("✓ Complete graph established!");
+            System.out.println("  Total nodes in network: " + (existingNodes.size() + 1));
+            System.out.println("═══════════════════════════════════════════════");
         } catch (Exception e) {
             System.err.println("✗ Failed to add node: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -295,7 +312,7 @@ public class NodeCLI {
     private static void printHelp() {
         System.out.println("Available commands:");
         System.out.println("  connect <host> <port>         - Connect to a node (port is registry name)");
-        System.out.println("  addnode <host> <port>         - Add a node to topology");
+        System.out.println("  addnode <host> <port>         - Add node to network (automatic complete graph)");
         System.out.println("  list                          - List all known nodes (numeric IDs)");
         System.out.println("  status                        - Show node status");
         System.out.println("  clock                         - Show logical clock");

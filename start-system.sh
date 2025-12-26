@@ -42,19 +42,19 @@ sleep 1
 
 # Start Node 1
 echo -e "${GREEN}Starting Node 1 on port $NODE1_PORT...${NC}"
-java -cp "$OUTPUT_DIR" cz.ctu.fee.dsv.semework.NodeRunner $NODE1_PORT > /dev/null 2>&1 &
+java -cp "$OUTPUT_DIR" cz.ctu.fee.dsv.semework.NodeRunner $NODE1_PORT > node1_console.log 2>&1 &
 NODE1_PID=$!
 sleep 2
 
 # Start Node 2
 echo -e "${GREEN}Starting Node 2 on port $NODE2_PORT...${NC}"
-java -cp "$OUTPUT_DIR" cz.ctu.fee.dsv.semework.NodeRunner $NODE2_PORT > /dev/null 2>&1 &
+java -cp "$OUTPUT_DIR" cz.ctu.fee.dsv.semework.NodeRunner $NODE2_PORT > node2_console.log 2>&1 &
 NODE2_PID=$!
 sleep 2
 
 # Start Node 3
 echo -e "${GREEN}Starting Node 3 on port $NODE3_PORT...${NC}"
-java -cp "$OUTPUT_DIR" cz.ctu.fee.dsv.semework.NodeRunner $NODE3_PORT > /dev/null 2>&1 &
+java -cp "$OUTPUT_DIR" cz.ctu.fee.dsv.semework.NodeRunner $NODE3_PORT > node3_console.log 2>&1 &
 NODE3_PID=$!
 sleep 2
 
@@ -96,7 +96,8 @@ echo "  - Node 2: $HOST:$NODE2_PORT (PID: $NODE2_PID)"
 echo "  - Node 3: $HOST:$NODE3_PORT (PID: $NODE3_PID)"
 echo ""
 echo "Log files:"
-echo "  - node_<nodeID>.log (individual node logs)"
+echo "  - node_<nodeID>.log (NodeImpl logs)"
+echo "  - node<N>_console.log (console output for debugging)"
 echo ""
 echo "To interact with the system:"
 echo "  ./run.sh client"
