@@ -144,23 +144,52 @@ public class NodeCLI {
             long nodeToAddId = nodeToAdd.getNodeId();
 
             System.out.println("═══════════════════════════════════════════════");
-            System.out.println("Adding node " + nodeToAddId + " to the network...");
+            System.out.println("Joining nodes into complete graph...");
             System.out.println("═══════════════════════════════════════════════");
 
-            // Call join on the connected node - it will broadcast to all existing nodes
-            System.out.println("Step 1: Calling join() on node " + currentNodeId);
-            java.util.Map<Long, Node> existingNodes = currentNode.join(nodeToAddId, nodeToAdd);
+            // Get topology from BOTH nodes to determine which has more connections
+            java.util.List<Long> currentNodeTopology = currentNode.getKnownNodes();
+            java.util.List<Long> nodeToAddTopology = nodeToAdd.getKnownNodes();
 
-            System.out.println("Step 2: Received " + existingNodes.size() + " existing nodes");
+            System.out.println("Current node " + currentNodeId + " knows " + currentNodeTopology.size() + " nodes");
+            System.out.println("Node to add " + nodeToAddId + " knows " + nodeToAddTopology.size() + " nodes");
+
+            Node networkNode; // The node that's already in the network
+            Node newNode;     // The node joining the network
+            long networkNodeId;
+            long newNodeId;
+
+            // Determine which node is already in the network (has more connections)
+            if (currentNodeTopology.size() >= nodeToAddTopology.size()) {
+                // Current node is in the network, nodeToAdd is joining
+                networkNode = currentNode;
+                newNode = nodeToAdd;
+                networkNodeId = currentNodeId;
+                newNodeId = nodeToAddId;
+                System.out.println("→ Node " + newNodeId + " is joining the network through node " + networkNodeId);
+            } else {
+                // nodeToAdd is in the network, current node is joining
+                networkNode = nodeToAdd;
+                newNode = currentNode;
+                networkNodeId = nodeToAddId;
+                newNodeId = currentNodeId;
+                System.out.println("→ Node " + newNodeId + " is joining the network through node " + networkNodeId);
+            }
+
+            // Call join on the network node - it will broadcast to all existing nodes
+            System.out.println("Step 1: Calling join() on network node " + networkNodeId);
+            java.util.Map<Long, Node> existingNodes = networkNode.join(newNodeId, newNode);
+
+            System.out.println("Step 2: Received " + existingNodes.size() + " existing nodes from network");
             for (Long id : existingNodes.keySet()) {
                 System.out.println("  - Node " + id);
             }
 
             // The joining node adds all existing nodes to its topology
-            System.out.println("Step 3: New node " + nodeToAddId + " adding all existing nodes to its topology");
+            System.out.println("Step 3: New node " + newNodeId + " adding all existing nodes to its topology");
             for (java.util.Map.Entry<Long, Node> entry : existingNodes.entrySet()) {
-                System.out.println("  - Adding node " + entry.getKey() + " to node " + nodeToAddId);
-                nodeToAdd.addNode(entry.getKey(), entry.getValue());
+                System.out.println("  - Adding node " + entry.getKey() + " to node " + newNodeId);
+                newNode.addNode(entry.getKey(), entry.getValue());
             }
 
             System.out.println("═══════════════════════════════════════════════");
