@@ -140,6 +140,52 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     @Override
+    public void leave() throws RemoteException {
+        incrementClock();
+        log("=== LEAVE: Starting graceful departure from network ===");
+        log("Current topology size: " + knownNodes.size() + " nodes");
+
+        // Get a copy of all known nodes before we start modifying the collection
+        List<Map.Entry<Long, Node>> nodesCopy = new ArrayList<>(knownNodes.entrySet());
+
+        // Step 1: Notify all other nodes to remove this node from their topology
+        log("Step 1: Notifying all nodes to remove node " + nodeId);
+        int successCount = 0;
+        int failureCount = 0;
+
+        for (Map.Entry<Long, Node> entry : nodesCopy) {
+            long otherNodeId = entry.getKey();
+            Node otherNode = entry.getValue();
+
+            try {
+                log("  Notifying node " + otherNodeId + " to remove node " + nodeId);
+                otherNode.removeNode(this.nodeId);
+                successCount++;
+            } catch (RemoteException e) {
+                log("  WARNING: Failed to notify node " + otherNodeId + ": " + e.getMessage());
+                failureCount++;
+            }
+        }
+
+        log("Notification complete: " + successCount + " successful, " + failureCount + " failed");
+
+        // Step 2: Clear this node's topology
+        log("Step 2: Clearing local topology");
+        int previousSize = knownNodes.size();
+        knownNodes.clear();
+        log("Cleared " + previousSize + " nodes from local topology");
+
+        // Step 3: Clear any pending requests in the queue
+        if (!requestQueue.isEmpty()) {
+            log("Step 3: Clearing " + requestQueue.size() + " pending requests from queue");
+            requestQueue.clear();
+        }
+
+        log("=== LEAVE: Node " + nodeId + " has successfully left the network ===");
+        log("Final topology size: " + knownNodes.size() + " nodes");
+    }
+
+    @Override
     public List<Long> getKnownNodes() throws RemoteException {
         return new ArrayList<>(knownNodes.keySet());
     }

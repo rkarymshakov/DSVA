@@ -53,6 +53,10 @@ public class NodeCLI {
                         addNode(parts[1], Integer.parseInt(parts[2]));
                         break;
 
+                    case "leave":
+                        leave();
+                        break;
+
                     case "list":
                         listNodes();
                         break;
@@ -192,6 +196,55 @@ public class NodeCLI {
             System.out.println("═══════════════════════════════════════════════");
         } catch (Exception e) {
             System.err.println("✗ Failed to add node: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void leave() {
+        if (currentNode == null) {
+            System.out.println("✗ Not connected to any node. Use 'connect' first.");
+            return;
+        }
+
+        try {
+            System.out.println("═══════════════════════════════════════════════");
+            System.out.println("Node " + currentNodeId + " is leaving the network");
+            System.out.println("═══════════════════════════════════════════════");
+
+            // Check current topology before leaving
+            java.util.List<Long> topologyBefore = currentNode.getKnownNodes();
+            System.out.println("Current topology size: " + topologyBefore.size() + " nodes");
+
+            if (topologyBefore.isEmpty()) {
+                System.out.println("⚠ Warning: Node is already isolated (no connections)");
+            } else {
+                System.out.println("Connected to nodes:");
+                for (Long id : topologyBefore) {
+                    System.out.println("  - Node " + id);
+                }
+            }
+
+            // Execute leave
+            System.out.println("\nExecuting leave operation...");
+            currentNode.leave();
+
+            // Verify leave was successful
+            java.util.List<Long> topologyAfter = currentNode.getKnownNodes();
+
+            System.out.println("\n═══════════════════════════════════════════════");
+            System.out.println("✓ Leave operation complete!");
+            System.out.println("  Topology before: " + topologyBefore.size() + " nodes");
+            System.out.println("  Topology after: " + topologyAfter.size() + " nodes");
+
+            if (topologyAfter.isEmpty()) {
+                System.out.println("✓ Node " + currentNodeId + " is now isolated");
+            } else {
+                System.out.println("⚠ Warning: Node still has " + topologyAfter.size() + " connections");
+            }
+            System.out.println("═══════════════════════════════════════════════");
+
+        } catch (Exception e) {
+            System.err.println("✗ Failed to leave network: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -336,6 +389,7 @@ public class NodeCLI {
         System.out.println("Available commands:");
         System.out.println("  connect <host> <port>         - Connect to a node");
         System.out.println("  addnode <host> <port>         - Join network (connect to NEW node first!)");
+        System.out.println("  leave                         - Leave network gracefully");
         System.out.println("  list                          - List all known nodes");
         System.out.println("  status                        - Show node status");
         System.out.println("  clock                         - Show logical clock");
@@ -352,5 +406,9 @@ public class NodeCLI {
         System.out.println("  1. Start all nodes with NodeRunner");
         System.out.println("  2. Connect to the NEW/ISOLATED node: connect <new-host> <new-port>");
         System.out.println("  3. Add it to network: addnode <existing-network-host> <existing-port>");
+        System.out.println();
+        System.out.println("To leave the network:");
+        System.out.println("  1. Connect to the node you want to remove");
+        System.out.println("  2. Run: leave");
     }
 }

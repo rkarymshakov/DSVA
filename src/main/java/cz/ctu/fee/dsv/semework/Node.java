@@ -46,6 +46,12 @@ public interface Node extends Remote {
     void removeNode(long nodeId) throws RemoteException;
 
     /**
+     * Leave the network - gracefully disconnect from all nodes
+     * This node will notify all other nodes to remove it from their topology
+     */
+    void leave() throws RemoteException;
+
+    /**
      * Get list of all known nodes in the system (their numeric IDs)
      */
     List<Long> getKnownNodes() throws RemoteException;
