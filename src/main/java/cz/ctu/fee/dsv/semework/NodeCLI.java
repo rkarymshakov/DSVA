@@ -5,20 +5,18 @@ import java.rmi.registry.Registry;
 import java.util.Scanner;
 
 /**
- * Interactive client for testing the distributed system with numeric node IDs
- *
- * Usage: java Client
+ * Interactive client with failure detection support
  */
 public class NodeCLI {
 
     private static Node currentNode = null;
-    private static long currentNodeId = -1;  // Numeric ID (long)
+    private static long currentNodeId = -1;
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
         System.out.println("=================================================");
-        System.out.println("Distributed System - Interactive Client (Numeric Node IDs)");
+        System.out.println("Distributed System - Interactive Client");
         System.out.println("=================================================");
         System.out.println();
 
@@ -93,6 +91,10 @@ public class NodeCLI {
                         ping();
                         break;
 
+                    case "detect":
+                        detectDeadNodes();
+                        break;
+
                     case "request":
                         requestCS();
                         break;
@@ -107,7 +109,7 @@ public class NodeCLI {
 
                     case "exit":
                     case "quit":
-                        System.out.println("Sleep a bit. And then lock in and finish project");
+                        System.out.println("Goodbye!");
                         scanner.close();
                         return;
 
@@ -117,6 +119,7 @@ public class NodeCLI {
                 }
             } catch (Exception e) {
                 System.err.println("Error: " + e.getMessage());
+                e.printStackTrace();
             }
         }
     }
@@ -124,9 +127,10 @@ public class NodeCLI {
     private static void connect(String hostname, int port) {
         try {
             Registry registry = LocateRegistry.getRegistry(hostname, port);
-            String registryName = String.valueOf(port);  // RMI registration name is port
+            String registryName = String.valueOf(port);
             currentNode = (Node) registry.lookup(registryName);
-            currentNodeId = currentNode.getNodeId();  // Get numeric long ID
+            currentNodeId = currentNode.getNodeId();
+
             System.out.println("✓ Connected to node ID: " + currentNodeId);
         } catch (Exception e) {
             System.err.println("✗ Connection failed: " + e.getMessage());
@@ -142,7 +146,6 @@ public class NodeCLI {
         }
 
         try {
-            // Get reference to the network node we want to join
             Registry registry = LocateRegistry.getRegistry(hostname, port);
             String registryName = String.valueOf(port);
             Node networkNode = (Node) registry.lookup(registryName);
@@ -152,8 +155,6 @@ public class NodeCLI {
             System.out.println("Joining node " + currentNodeId + " to network via node " + networkNodeId);
             System.out.println("═══════════════════════════════════════════════");
 
-            // CRITICAL CHECK: The current node must be isolated (have no connections)
-            // This ensures we're always joining FROM outside TO inside the network
             java.util.List<Long> currentNodeTopology = currentNode.getKnownNodes();
             if (!currentNodeTopology.isEmpty()) {
                 System.out.println("✗ ERROR: Current node " + currentNodeId + " already has " +
@@ -169,11 +170,9 @@ public class NodeCLI {
                 return;
             }
 
-            // Current node is isolated - proceed with join
             System.out.println("✓ Current node " + currentNodeId + " is isolated (0 connections)");
             System.out.println("→ Joining network through node " + networkNodeId);
 
-            // Call join on the network node - it will broadcast to all existing nodes
             System.out.println("\nStep 1: Calling join() on network node " + networkNodeId);
             java.util.Map<Long, Node> existingNodes = networkNode.join(currentNodeId, currentNode);
 
@@ -182,7 +181,6 @@ public class NodeCLI {
                 System.out.println("  - Node " + id);
             }
 
-            // The current (joining) node adds all existing nodes to its topology
             System.out.println("\nStep 3: Adding all existing nodes to node " + currentNodeId + "'s topology");
             for (java.util.Map.Entry<Long, Node> entry : existingNodes.entrySet()) {
                 System.out.println("  - Adding node " + entry.getKey());
@@ -207,7 +205,6 @@ public class NodeCLI {
         }
 
         try {
-            // Check current topology before leaving
             java.util.List<Long> topologyBefore = currentNode.getKnownNodes();
 
             if (topologyBefore.isEmpty()) {
@@ -229,11 +226,9 @@ public class NodeCLI {
                 System.out.println("  - Node " + id);
             }
 
-            // Execute leave
             System.out.println("\nExecuting leave operation...");
             currentNode.leave();
 
-            // Verify leave was successful
             java.util.List<Long> topologyAfter = currentNode.getKnownNodes();
 
             System.out.println("\n═══════════════════════════════════════════════");
@@ -270,6 +265,7 @@ public class NodeCLI {
                     System.out.println("  - Node ID: " + nodeId);
                 }
             }
+            System.out.println("Total: " + nodes.size() + " nodes");
         } catch (Exception e) {
             System.err.println("✗ Error: " + e.getMessage());
         }
@@ -362,6 +358,31 @@ public class NodeCLI {
         }
     }
 
+    private static void detectDeadNodes() {
+        if (currentNode == null) {
+            System.out.println("✗ Not connected to any node. Use 'connect' first.");
+            return;
+        }
+
+        try {
+            System.out.println("═══════════════════════════════════════════════");
+            System.out.println("Starting failure detection on node " + currentNodeId);
+            System.out.println("═══════════════════════════════════════════════");
+
+            // Call the RMI method - it will do all the work
+            currentNode.detectDeadNodes();
+
+            System.out.println("\n═══════════════════════════════════════════════");
+            System.out.println("✓ Failure detection complete");
+            System.out.println("═══════════════════════════════════════════════");
+            System.out.println("Check the node's console/log for detailed results.");
+
+        } catch (Exception e) {
+            System.err.println("✗ Detection failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     private static void requestCS() {
         if (currentNode == null) {
             System.out.println("✗ Not connected to any node.");
@@ -369,7 +390,6 @@ public class NodeCLI {
         }
 
         try {
-            // Placeholder - will be implemented later with Lamport
             System.out.println("Request CS (not yet implemented - Lamport algorithm pending)");
         } catch (Exception e) {
             System.err.println("✗ Error: " + e.getMessage());
@@ -383,7 +403,6 @@ public class NodeCLI {
         }
 
         try {
-            // Placeholder
             System.out.println("Release CS (not yet implemented - Lamport algorithm pending)");
         } catch (Exception e) {
             System.err.println("✗ Error: " + e.getMessage());
@@ -402,6 +421,7 @@ public class NodeCLI {
         System.out.println("  setvar <value>                - Set shared variable value");
         System.out.println("  delay <ms>                    - Set message delay");
         System.out.println("  ping                          - Ping the node");
+        System.out.println("  detect                        - Detect and remove dead nodes");
         System.out.println("  request                       - Request critical section (TODO)");
         System.out.println("  release                       - Release critical section (TODO)");
         System.out.println("  help                          - Show this help");
@@ -412,8 +432,10 @@ public class NodeCLI {
         System.out.println("  2. Connect to the NEW/ISOLATED node: connect <new-host> <new-port>");
         System.out.println("  3. Add it to network: addnode <existing-network-host> <existing-port>");
         System.out.println();
-        System.out.println("To leave the network:");
-        System.out.println("  1. Connect to the node you want to remove");
-        System.out.println("  2. Run: leave");
+        System.out.println("To detect dead nodes:");
+        System.out.println("  1. Kill a node with Ctrl+C");
+        System.out.println("  2. Connect to any alive node");
+        System.out.println("  3. Run: detect");
+        System.out.println("  4. Dead node will be removed and all nodes notified");
     }
 }

@@ -7,104 +7,50 @@ import java.util.Map;
 
 /**
  * Remote interface for distributed node implementing Lamport's mutual exclusion algorithm
- * with shared variable functionality
+ * with shared variable functionality and failure detection
  */
 public interface Node extends Remote {
 
     // === Node identification ===
-    /**
-     * Get unique numeric identifier of this node (generated from IP + port)
-     */
     long getNodeId() throws RemoteException;
-
-    /**
-     * Get the current logical clock value (Lamport timestamp)
-     */
     int getLogicalClock() throws RemoteException;
 
     // === Topology management ===
-    /**
-     * Join the network - returns map of all existing nodes
-     * Automatically establishes complete graph topology
-     * @param joiningNodeId ID of the joining node
-     * @param joiningNodeRef Reference to the joining node
-     * @return Map of all existing nodes (nodeId -> Node reference)
-     */
     Map<Long, Node> join(long joiningNodeId, Node joiningNodeRef) throws RemoteException;
-
-    /**
-     * Register another node in this node's topology
-     * @param nodeId Unique numeric identifier of the node to add
-     * @param nodeRef Remote reference to the node
-     */
     void addNode(long nodeId, Node nodeRef) throws RemoteException;
-
-    /**
-     * Remove a node from topology
-     * @param nodeId Numeric identifier of node to remove
-     */
     void removeNode(long nodeId) throws RemoteException;
-
-    /**
-     * Leave the network - gracefully disconnect from all nodes
-     * This node will notify all other nodes to remove it from their topology
-     */
     void leave() throws RemoteException;
-
-    /**
-     * Get list of all known nodes in the system (their numeric IDs)
-     */
     List<Long> getKnownNodes() throws RemoteException;
 
     // === Lamport's algorithm - Critical Section messages ===
-    /**
-     * Request access to critical section
-     * @param requestingNodeId ID of the requesting node
-     * @param timestamp Lamport timestamp of the request
-     */
     void requestCS(long requestingNodeId, int timestamp) throws RemoteException;
-
-    /**
-     * Reply to a critical section request
-     * @param replyingNodeId ID of the node sending reply
-     * @param timestamp Lamport timestamp of the reply
-     */
     void replyCS(long replyingNodeId, int timestamp) throws RemoteException;
-
-    /**
-     * Release critical section (broadcast to all nodes)
-     * @param releasingNodeId ID of the node releasing CS
-     * @param timestamp Lamport timestamp of the release
-     */
     void releaseCS(long releasingNodeId, int timestamp) throws RemoteException;
 
-    // === Shared Variable operations (executed in Critical Section) ===
-    /**
-     * Get the current value of the shared variable
-     */
+    // === Shared Variable operations ===
     int getSharedVariable() throws RemoteException;
-
-    /**
-     * Set the value of the shared variable
-     * @param value New value for the shared variable
-     */
     void setSharedVariable(int value) throws RemoteException;
 
     // === Testing and simulation features ===
-    /**
-     * Set artificial delay for message sending/receiving (in milliseconds)
-     */
     void setMessageDelayMs(int delayMs) throws RemoteException;
-
-    /**
-     * Get current message delay setting
-     */
     int getMessageDelayMs() throws RemoteException;
 
     // === Status and debugging ===
     boolean isInCriticalSection() throws RemoteException;
-
     String getQueueStatus() throws RemoteException;
-
     void ping() throws RemoteException;
+
+    // === FAILURE DETECTION ===
+    /**
+     * Check all known nodes for liveness. Remove dead nodes and notify others.
+     * This method pings all nodes with timeout, removes unresponsive nodes,
+     * and broadcasts their removal to all remaining nodes.
+     */
+    void detectDeadNodes() throws RemoteException;
+
+    /**
+     * Notification that a node is dead - receiver should remove it from topology
+     * @param deadNodeId ID of the dead node
+     */
+    void notifyNodeDead(long deadNodeId) throws RemoteException;
 }

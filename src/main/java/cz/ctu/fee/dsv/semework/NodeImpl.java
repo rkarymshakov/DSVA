@@ -10,33 +10,22 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 /**
- * Implementation of Node interface with Lamport mutual exclusion foundation
+ * Implementation of Node interface with Lamport mutual exclusion and failure detection
  */
 public class NodeImpl extends UnicastRemoteObject implements Node {
 
-    // Node identification - numeric ID (like in example project)
     private final long nodeId;
     private int logicalClock;
-
-    // Topology - complete graph (key = numeric node ID)
     private final Map<Long, Node> knownNodes;
-
-    // Shared variable
     private int sharedVariable;
-
-    // Critical section state
     private boolean inCriticalSection;
-
-    // Message delay simulation
     private int messageDelayMs;
-
-    // Request queue for Lamport algorithm
     private final PriorityQueue<Request> requestQueue;
-
-    // File logging
     private FileWriter logWriter;
 
-    // Time formatter for logging
+    // Failure detection settings
+    private static final int PING_TIMEOUT_MS = 3000; // 3 seconds timeout
+
     private static final DateTimeFormatter timeFormatter =
             DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
@@ -50,7 +39,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         this.messageDelayMs = 0;
         this.requestQueue = new PriorityQueue<>();
 
-        // Initialize log file
         try {
             this.logWriter = new FileWriter("node_" + nodeId + ".log", true);
         } catch (IOException e) {
@@ -61,7 +49,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         log("Node created with ID: " + nodeId);
     }
 
-    // === Generate numeric ID exactly like in example ===
     public static long generateId(String ip, int port) {
         String[] array = ip.split("\\.");
         long id = 0;
@@ -73,17 +60,152 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         return id;
     }
 
+    // === FAILURE DETECTION IMPLEMENTATION ===
+
+    @Override
+    public void detectDeadNodes() throws RemoteException {
+        incrementClock();
+        log("=== Starting failure detection for " + knownNodes.size() + " nodes ===");
+
+        List<Long> deadNodes = new ArrayList<>();
+
+        // Check each node in topology
+        for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
+            long nodeId = entry.getKey();
+            Node node = entry.getValue();
+
+            if (!isNodeAlive(nodeId, node)) {
+                log("DETECTED: Node " + nodeId + " is DEAD (no response within " + PING_TIMEOUT_MS + "ms)");
+                deadNodes.add(nodeId);
+            } else {
+                log("OK: Node " + nodeId + " is alive");
+            }
+        }
+
+        // Handle each dead node: remove locally and broadcast
+        for (long deadNodeId : deadNodes) {
+            handleDeadNode(deadNodeId);
+        }
+
+        if (deadNodes.isEmpty()) {
+            log("=== Failure detection complete: All " + knownNodes.size() + " nodes alive ===");
+        } else {
+            log("=== Failure detection complete: Removed " + deadNodes.size() + " dead nodes ===");
+            log("Remaining nodes in topology: " + knownNodes.size());
+        }
+    }
+
+    /**
+     * Check if a specific node is alive by pinging it with timeout
+     */
+    private boolean isNodeAlive(long nodeId, Node node) {
+        try {
+            // Create a thread to ping the node
+            PingTask pingTask = new PingTask(node);
+            Thread pingThread = new Thread(pingTask);
+            pingThread.start();
+
+            // Wait for response with timeout
+            pingThread.join(PING_TIMEOUT_MS);
+
+            // If thread is still alive after timeout, node is dead
+            if (pingThread.isAlive()) {
+                pingThread.interrupt();
+                return false;
+            }
+
+            // Check if ping was successful
+            return pingTask.isSuccess();
+
+        } catch (InterruptedException e) {
+            log("ERROR: Ping interrupted for node " + nodeId);
+            return false;
+        }
+    }
+
+    /**
+     * Handle a dead node: remove locally and broadcast to all other nodes
+     */
+    private void handleDeadNode(long deadNodeId) {
+        log("=== HANDLING DEAD NODE " + deadNodeId + " ===");
+
+        // Step 1: Remove from local topology
+        knownNodes.remove(deadNodeId);
+        log("Removed node " + deadNodeId + " from local topology");
+
+        // Step 2: Broadcast death notification to all remaining nodes
+        log("Broadcasting death of node " + deadNodeId + " to " + knownNodes.size() + " remaining nodes");
+
+        int successCount = 0;
+        int failureCount = 0;
+
+        // Make a copy to avoid concurrent modification
+        List<Map.Entry<Long, Node>> nodesCopy = new ArrayList<>(knownNodes.entrySet());
+
+        for (Map.Entry<Long, Node> entry : nodesCopy) {
+            long otherNodeId = entry.getKey();
+            Node otherNode = entry.getValue();
+
+            try {
+                log("  → Notifying node " + otherNodeId + " about dead node " + deadNodeId);
+                otherNode.notifyNodeDead(deadNodeId);
+                successCount++;
+            } catch (RemoteException e) {
+                log("  ✗ WARNING: Failed to notify node " + otherNodeId + ": " + e.getMessage());
+                failureCount++;
+            }
+        }
+
+        log("Broadcast complete: " + successCount + " notified, " + failureCount + " failed");
+        log("=== DEAD NODE " + deadNodeId + " HANDLING COMPLETE ===");
+    }
+
+    @Override
+    public void notifyNodeDead(long deadNodeId) throws RemoteException {
+        incrementClock();
+        log("NOTIFICATION: Received death notice for node " + deadNodeId);
+
+        if (knownNodes.containsKey(deadNodeId)) {
+            knownNodes.remove(deadNodeId);
+            log("✓ Removed dead node " + deadNodeId + " from topology (now " + knownNodes.size() + " nodes)");
+        } else {
+            log("⚠ Node " + deadNodeId + " was not in my topology (already removed or never existed)");
+        }
+    }
+
+    /**
+     * Helper class to ping a node in a separate thread with timeout support
+     */
+    private static class PingTask implements Runnable {
+        private final Node node;
+        private boolean success = false;
+
+        PingTask(Node node) {
+            this.node = node;
+        }
+
+        @Override
+        public void run() {
+            try {
+                node.ping();
+                success = true;
+            } catch (RemoteException e) {
+                success = false;
+            }
+        }
+
+        boolean isSuccess() {
+            return success;
+        }
+    }
+
     // === Helper methods ===
 
     private void log(String message) {
         String timestamp = LocalDateTime.now().format(timeFormatter);
         String logLine = String.format("[%s][LC=%d][Node %d] %s",
                 timestamp, logicalClock, nodeId, message);
-
-        // Write to console
         System.out.println(logLine);
-
-        // Write to file
         if (logWriter != null) {
             try {
                 logWriter.write(logLine + "\n");
@@ -143,19 +265,16 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void leave() throws RemoteException {
         incrementClock();
 
-        // Check if node is already isolated (not in any network)
         if (knownNodes.isEmpty()) {
-            log("LEAVE: Node " + nodeId + " is already isolated (not in any network). Nothing to do.");
+            log("LEAVE: Node " + nodeId + " is already isolated. Nothing to do.");
             return;
         }
 
         log("=== LEAVE: Starting graceful departure from network ===");
         log("Current topology size: " + knownNodes.size() + " nodes");
 
-        // Get a copy of all known nodes before we start modifying the collection
         List<Map.Entry<Long, Node>> nodesCopy = new ArrayList<>(knownNodes.entrySet());
 
-        // Step 1: Notify all other nodes to remove this node from their topology
         log("Step 1: Notifying all nodes to remove node " + nodeId);
         int successCount = 0;
         int failureCount = 0;
@@ -176,20 +295,17 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         log("Notification complete: " + successCount + " successful, " + failureCount + " failed");
 
-        // Step 2: Clear this node's topology
         log("Step 2: Clearing local topology");
         int previousSize = knownNodes.size();
         knownNodes.clear();
         log("Cleared " + previousSize + " nodes from local topology");
 
-        // Step 3: Clear any pending requests in the queue
         if (!requestQueue.isEmpty()) {
             log("Step 3: Clearing " + requestQueue.size() + " pending requests from queue");
             requestQueue.clear();
         }
 
         log("=== LEAVE: Node " + nodeId + " has successfully left the network ===");
-        log("Final topology size: " + knownNodes.size() + " nodes");
     }
 
     @Override
@@ -202,23 +318,17 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         incrementClock();
         log("Node " + joiningNodeId + " is joining the network");
 
-        // Get a copy of current nodes to return to the joining node
         Map<Long, Node> existingNodes = new HashMap<>(knownNodes);
-
-        // Add myself to the map so joining node knows about me too
         existingNodes.put(this.nodeId, this);
 
-        // Add the joining node to my topology
         knownNodes.put(joiningNodeId, joiningNodeRef);
         log("Added joining node " + joiningNodeId + " to my topology");
 
-        // Broadcast to ALL existing nodes: add the new node to their topology
         log("Broadcasting new node " + joiningNodeId + " to all existing nodes");
         for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
             long existingNodeId = entry.getKey();
             Node existingNode = entry.getValue();
 
-            // Don't send to the joining node itself
             if (existingNodeId != joiningNodeId) {
                 try {
                     log("  Telling node " + existingNodeId + " to add node " + joiningNodeId);
@@ -229,7 +339,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             }
         }
 
-        log("Join complete. Returning " + existingNodes.size() + " existing nodes to joining node");
+        log("Join complete. Returning " + existingNodes.size() + " existing nodes");
         return existingNodes;
     }
 
@@ -238,7 +348,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         simulateDelay();
         updateClock(timestamp);
         log("Received CS REQUEST from node " + requestingNodeId + " with timestamp " + timestamp);
-        // TODO: Implement full Lamport logic here
     }
 
     @Override
@@ -246,7 +355,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         simulateDelay();
         updateClock(timestamp);
         log("Received CS REPLY from node " + replyingNodeId + " with timestamp " + timestamp);
-        // TODO: Implement full Lamport logic here
     }
 
     @Override
@@ -254,7 +362,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         simulateDelay();
         updateClock(timestamp);
         log("Received CS RELEASE from node " + releasingNodeId + " with timestamp " + timestamp);
-        // TODO: Implement full Lamport logic here
     }
 
     @Override
@@ -296,10 +403,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void ping() throws RemoteException {
         incrementClock();
-        log("Ping received");
+        // Just respond - no logging to avoid spam during detection
     }
 
-    // === Cleanup method ===
     public void shutdown() throws RemoteException {
         log("Node shutting down");
         if (logWriter != null) {
@@ -312,7 +418,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         }
     }
 
-    // === Broadcast helper ===
     protected void broadcast(NodeOperation operation) {
         for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
             try {
@@ -328,9 +433,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         void execute(long nodeId, Node node) throws RemoteException;
     }
 
-    // === Request class for priority queue ===
     protected static class Request implements Comparable<Request> {
-        final long nodeId;  // now long
+        final long nodeId;
         final int timestamp;
 
         Request(long nodeId, int timestamp) {
