@@ -142,6 +142,13 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void leave() throws RemoteException {
         incrementClock();
+
+        // Check if node is already isolated (not in any network)
+        if (knownNodes.isEmpty()) {
+            log("LEAVE: Node " + nodeId + " is already isolated (not in any network). Nothing to do.");
+            return;
+        }
+
         log("=== LEAVE: Starting graceful departure from network ===");
         log("Current topology size: " + knownNodes.size() + " nodes");
 

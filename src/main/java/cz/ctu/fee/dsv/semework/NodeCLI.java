@@ -207,21 +207,26 @@ public class NodeCLI {
         }
 
         try {
+            // Check current topology before leaving
+            java.util.List<Long> topologyBefore = currentNode.getKnownNodes();
+
+            if (topologyBefore.isEmpty()) {
+                System.out.println("═══════════════════════════════════════════════");
+                System.out.println("⚠ Node " + currentNodeId + " is already isolated");
+                System.out.println("═══════════════════════════════════════════════");
+                System.out.println("This node is not connected to any network.");
+                System.out.println("Nothing to do.");
+                System.out.println("═══════════════════════════════════════════════");
+                return;
+            }
+
             System.out.println("═══════════════════════════════════════════════");
             System.out.println("Node " + currentNodeId + " is leaving the network");
             System.out.println("═══════════════════════════════════════════════");
-
-            // Check current topology before leaving
-            java.util.List<Long> topologyBefore = currentNode.getKnownNodes();
             System.out.println("Current topology size: " + topologyBefore.size() + " nodes");
-
-            if (topologyBefore.isEmpty()) {
-                System.out.println("⚠ Warning: Node is already isolated (no connections)");
-            } else {
-                System.out.println("Connected to nodes:");
-                for (Long id : topologyBefore) {
-                    System.out.println("  - Node " + id);
-                }
+            System.out.println("Connected to nodes:");
+            for (Long id : topologyBefore) {
+                System.out.println("  - Node " + id);
             }
 
             // Execute leave
