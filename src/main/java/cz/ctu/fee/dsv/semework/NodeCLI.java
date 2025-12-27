@@ -138,62 +138,56 @@ public class NodeCLI {
         }
 
         try {
+            // Get reference to the network node we want to join
             Registry registry = LocateRegistry.getRegistry(hostname, port);
             String registryName = String.valueOf(port);
-            Node nodeToAdd = (Node) registry.lookup(registryName);
-            long nodeToAddId = nodeToAdd.getNodeId();
+            Node networkNode = (Node) registry.lookup(registryName);
+            long networkNodeId = networkNode.getNodeId();
 
             System.out.println("═══════════════════════════════════════════════");
-            System.out.println("Joining nodes into complete graph...");
+            System.out.println("Joining node " + currentNodeId + " to network via node " + networkNodeId);
             System.out.println("═══════════════════════════════════════════════");
 
-            // Get topology from BOTH nodes to determine which has more connections
+            // CRITICAL CHECK: The current node must be isolated (have no connections)
+            // This ensures we're always joining FROM outside TO inside the network
             java.util.List<Long> currentNodeTopology = currentNode.getKnownNodes();
-            java.util.List<Long> nodeToAddTopology = nodeToAdd.getKnownNodes();
-
-            System.out.println("Current node " + currentNodeId + " knows " + currentNodeTopology.size() + " nodes");
-            System.out.println("Node to add " + nodeToAddId + " knows " + nodeToAddTopology.size() + " nodes");
-
-            Node networkNode; // The node that's already in the network
-            Node newNode;     // The node joining the network
-            long networkNodeId;
-            long newNodeId;
-
-            // Determine which node is already in the network (has more connections)
-            if (currentNodeTopology.size() >= nodeToAddTopology.size()) {
-                // Current node is in the network, nodeToAdd is joining
-                networkNode = currentNode;
-                newNode = nodeToAdd;
-                networkNodeId = currentNodeId;
-                newNodeId = nodeToAddId;
-                System.out.println("→ Node " + newNodeId + " is joining the network through node " + networkNodeId);
-            } else {
-                // nodeToAdd is in the network, current node is joining
-                networkNode = nodeToAdd;
-                newNode = currentNode;
-                networkNodeId = nodeToAddId;
-                newNodeId = currentNodeId;
-                System.out.println("→ Node " + newNodeId + " is joining the network through node " + networkNodeId);
+            if (!currentNodeTopology.isEmpty()) {
+                System.out.println("✗ ERROR: Current node " + currentNodeId + " already has " +
+                        currentNodeTopology.size() + " connections!");
+                System.out.println("✗ You can only add nodes FROM an isolated node TO a network node.");
+                System.out.println("✗ Current node topology:");
+                for (Long id : currentNodeTopology) {
+                    System.out.println("  - Node " + id);
+                }
+                System.out.println("\nCorrect usage:");
+                System.out.println("  1. Connect to the NEW/ISOLATED node");
+                System.out.println("  2. Run: addnode <existing-network-node-host> <port>");
+                return;
             }
 
-            // Call join on the network node - it will broadcast to all existing nodes
-            System.out.println("Step 1: Calling join() on network node " + networkNodeId);
-            java.util.Map<Long, Node> existingNodes = networkNode.join(newNodeId, newNode);
+            // Current node is isolated - proceed with join
+            System.out.println("✓ Current node " + currentNodeId + " is isolated (0 connections)");
+            System.out.println("→ Joining network through node " + networkNodeId);
 
-            System.out.println("Step 2: Received " + existingNodes.size() + " existing nodes from network");
+            // Call join on the network node - it will broadcast to all existing nodes
+            System.out.println("\nStep 1: Calling join() on network node " + networkNodeId);
+            java.util.Map<Long, Node> existingNodes = networkNode.join(currentNodeId, currentNode);
+
+            System.out.println("\nStep 2: Received " + existingNodes.size() + " existing nodes from network");
             for (Long id : existingNodes.keySet()) {
                 System.out.println("  - Node " + id);
             }
 
-            // The joining node adds all existing nodes to its topology
-            System.out.println("Step 3: New node " + newNodeId + " adding all existing nodes to its topology");
+            // The current (joining) node adds all existing nodes to its topology
+            System.out.println("\nStep 3: Adding all existing nodes to node " + currentNodeId + "'s topology");
             for (java.util.Map.Entry<Long, Node> entry : existingNodes.entrySet()) {
-                System.out.println("  - Adding node " + entry.getKey() + " to node " + newNodeId);
-                newNode.addNode(entry.getKey(), entry.getValue());
+                System.out.println("  - Adding node " + entry.getKey());
+                currentNode.addNode(entry.getKey(), entry.getValue());
             }
 
-            System.out.println("═══════════════════════════════════════════════");
-            System.out.println("✓ Complete graph established!");
+            System.out.println("\n═══════════════════════════════════════════════");
+            System.out.println("✓ Join complete! Complete graph established.");
+            System.out.println("  Node " + currentNodeId + " now knows " + existingNodes.size() + " other nodes");
             System.out.println("  Total nodes in network: " + (existingNodes.size() + 1));
             System.out.println("═══════════════════════════════════════════════");
         } catch (Exception e) {
@@ -340,9 +334,9 @@ public class NodeCLI {
 
     private static void printHelp() {
         System.out.println("Available commands:");
-        System.out.println("  connect <host> <port>         - Connect to a node (port is registry name)");
-        System.out.println("  addnode <host> <port>         - Add node to network (automatic complete graph)");
-        System.out.println("  list                          - List all known nodes (numeric IDs)");
+        System.out.println("  connect <host> <port>         - Connect to a node");
+        System.out.println("  addnode <host> <port>         - Join network (connect to NEW node first!)");
+        System.out.println("  list                          - List all known nodes");
         System.out.println("  status                        - Show node status");
         System.out.println("  clock                         - Show logical clock");
         System.out.println("  getvar                        - Get shared variable value");
@@ -353,5 +347,10 @@ public class NodeCLI {
         System.out.println("  release                       - Release critical section (TODO)");
         System.out.println("  help                          - Show this help");
         System.out.println("  exit                          - Exit client");
+        System.out.println();
+        System.out.println("IMPORTANT: To add a node to the network:");
+        System.out.println("  1. Start all nodes with NodeRunner");
+        System.out.println("  2. Connect to the NEW/ISOLATED node: connect <new-host> <new-port>");
+        System.out.println("  3. Add it to network: addnode <existing-network-host> <existing-port>");
     }
 }
