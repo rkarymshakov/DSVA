@@ -317,6 +317,15 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         knownNodes.put(joiningNodeId, joiningNodeRef);
         log("Added joining node " + joiningNodeId + " to my topology");
 
+        try {
+            log("Synchronizing shared variable to joining node " + joiningNodeId +
+                    " (value=" + sharedVariable + ")");
+            joiningNodeRef.updateSharedVariable(sharedVariable, logicalClock, nodeId);
+        } catch (RemoteException e) {
+            log("ERROR: Failed to sync shared variable to node " + joiningNodeId + ": " + e.getMessage());
+        }
+
+        // 4) Inform all existing nodes about the new node
         log("Broadcasting new node " + joiningNodeId + " to all existing nodes");
         for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
             long existingNodeId = entry.getKey();
@@ -470,10 +479,34 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public synchronized void setSharedVariable(int value) throws RemoteException {
+        if (!inCriticalSection) {
+            log("ERROR: setSharedVariable called outside CS");
+            return;
+        }
+
         incrementClock();
         log("Writing shared variable: " + sharedVariable + " -> " + value);
         sharedVariable = value;
+
+        // BROADCAST UPDATE
+        for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
+            try {
+                entry.getValue().updateSharedVariable(value, logicalClock, nodeId);
+            } catch (RemoteException e) {
+                log("Failed to propagate value to node " + entry.getKey());
+            }
+        }
     }
+
+
+    @Override
+    public synchronized void updateSharedVariable(int value, int timestamp, long sourceNodeId)
+            throws RemoteException {
+        updateClock(timestamp);
+        log("UPDATE from node " + sourceNodeId + ": sharedVariable = " + value);
+        this.sharedVariable = value;
+    }
+
 
     @Override
     public void setMessageDelayMs(int delayMs) throws RemoteException {

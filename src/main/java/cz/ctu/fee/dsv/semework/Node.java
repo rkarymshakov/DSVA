@@ -32,6 +32,7 @@ public interface Node extends Remote {
     // === Shared Variable operations ===
     int getSharedVariable() throws RemoteException;
     void setSharedVariable(int value) throws RemoteException;
+    void updateSharedVariable(int value, int timestamp, long sourceNodeId) throws RemoteException;
 
     // === Testing and simulation features ===
     void setMessageDelayMs(int delayMs) throws RemoteException;
