@@ -26,6 +26,8 @@ public interface Node extends Remote {
     void requestCS(long requestingNodeId, int timestamp) throws RemoteException;
     void replyCS(long replyingNodeId, int timestamp) throws RemoteException;
     void releaseCS(long releasingNodeId, int timestamp) throws RemoteException;
+    void enterCS() throws RemoteException;
+    void leaveCS() throws RemoteException;
 
     // === Shared Variable operations ===
     int getSharedVariable() throws RemoteException;

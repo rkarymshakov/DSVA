@@ -22,6 +22,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private int messageDelayMs;
     private final PriorityQueue<Request> requestQueue;
     private FileWriter logWriter;
+    private final Set<Long> replySet = new HashSet<>();
+    private boolean wantCS = false;
+    private int myRequestTimestamp = -1;
 
     // Failure detection settings
     private static final int PING_TIMEOUT_MS = 3000;
@@ -333,25 +336,129 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         return existingNodes;
     }
 
+    public void enterCS() throws RemoteException {
+        incrementClock();
+        wantCS = true;
+        myRequestTimestamp = logicalClock;
+
+        log("=== REQUESTING CRITICAL SECTION (timestamp=" + myRequestTimestamp + ") ===");
+
+        // Add my own request to queue
+        requestQueue.add(new Request(nodeId, myRequestTimestamp));
+
+        // Clear old replies
+        replySet.clear();
+
+        // Broadcast REQUEST to all nodes
+        broadcast((id, node) -> {
+            log("  → Sending REQUEST to node " + id);
+            node.requestCS(nodeId, myRequestTimestamp);
+        });
+
+        // Wait for permission
+        waitForPermission();
+
+        // Enter CS
+        inCriticalSection = true;
+        log(">>> ENTERED CRITICAL SECTION <<<");
+    }
+
+    private synchronized void waitForPermission() {
+        while (!canEnterCS()) {
+            try {
+                wait(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    private synchronized boolean canEnterCS() {
+        if (!wantCS) return false;
+
+        // Check: my request is first in queue
+        Request first = requestQueue.peek();
+        if (first == null || first.nodeId != nodeId) {
+            return false;
+        }
+
+        // Check: have replies from ALL other nodes
+        return replySet.size() == knownNodes.size();
+    }
+
     @Override
     public void requestCS(long requestingNodeId, int timestamp) throws RemoteException {
         simulateDelay();
         updateClock(timestamp);
-        log("Received CS REQUEST from node " + requestingNodeId + " with timestamp " + timestamp);
+
+        log("Received REQUEST from node " + requestingNodeId + " (ts=" + timestamp + ")");
+
+        // Add to queue
+        synchronized(requestQueue) {
+            requestQueue.add(new Request(requestingNodeId, timestamp));
+            log("  Queue now: " + requestQueue);
+        }
+
+        // Send REPLY immediately
+        incrementClock();
+        Node requester = knownNodes.get(requestingNodeId);
+        if (requester != null) {
+            log("  → Sending REPLY to node " + requestingNodeId);
+            requester.replyCS(nodeId, logicalClock);
+        }
     }
 
     @Override
     public void replyCS(long replyingNodeId, int timestamp) throws RemoteException {
         simulateDelay();
         updateClock(timestamp);
-        log("Received CS REPLY from node " + replyingNodeId + " with timestamp " + timestamp);
+
+        log("Received REPLY from node " + replyingNodeId + " (ts=" + timestamp + ")");
+
+        synchronized(this) {
+            replySet.add(replyingNodeId);
+            log("  Reply count: " + replySet.size() + "/" + knownNodes.size());
+            notifyAll(); // Wake up waiting thread
+        }
     }
 
     @Override
     public void releaseCS(long releasingNodeId, int timestamp) throws RemoteException {
         simulateDelay();
         updateClock(timestamp);
-        log("Received CS RELEASE from node " + releasingNodeId + " with timestamp " + timestamp);
+
+        log("Received RELEASE from node " + releasingNodeId + " (ts=" + timestamp + ")");
+
+        synchronized(requestQueue) {
+            requestQueue.removeIf(r -> r.nodeId == releasingNodeId);
+            log("  Queue after removal: " + requestQueue);
+        }
+    }
+
+    public void leaveCS() throws RemoteException {
+        if (!inCriticalSection) {
+            log("ERROR: Not in critical section!");
+            return;
+        }
+
+        incrementClock();
+        log("=== LEAVING CRITICAL SECTION ===");
+
+        inCriticalSection = false;
+        wantCS = false;
+
+        // Remove my request from queue
+        synchronized(requestQueue) {
+            requestQueue.removeIf(r -> r.nodeId == nodeId);
+        }
+
+        // Broadcast RELEASE
+        broadcast((id, node) -> {
+            log("  → Sending RELEASE to node " + id);
+            node.releaseCS(nodeId, logicalClock);
+        });
+
+        log(">>> LEFT CRITICAL SECTION <<<");
     }
 
     @Override

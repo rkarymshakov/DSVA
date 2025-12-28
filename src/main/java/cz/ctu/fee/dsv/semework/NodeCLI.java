@@ -383,14 +383,14 @@ public class NodeCLI {
         }
     }
 
+    // In NodeCLI.java, update these methods:
     private static void requestCS() {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node.");
+            System.out.println("✗ Not connected.");
             return;
         }
-
         try {
-            System.out.println("Request CS (not yet implemented - Lamport algorithm pending)");
+            currentNode.enterCS();
         } catch (Exception e) {
             System.err.println("✗ Error: " + e.getMessage());
         }
@@ -398,12 +398,11 @@ public class NodeCLI {
 
     private static void releaseCS() {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node.");
+            System.out.println("✗ Not connected.");
             return;
         }
-
         try {
-            System.out.println("Release CS (not yet implemented - Lamport algorithm pending)");
+            currentNode.leaveCS();
         } catch (Exception e) {
             System.err.println("✗ Error: " + e.getMessage());
         }
