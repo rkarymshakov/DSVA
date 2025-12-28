@@ -369,7 +369,6 @@ public class NodeCLI {
             System.out.println("Starting failure detection on node " + currentNodeId);
             System.out.println("═══════════════════════════════════════════════");
 
-            // Call the RMI method - it will do all the work
             currentNode.detectDeadNodes();
 
             System.out.println("\n═══════════════════════════════════════════════");
@@ -383,7 +382,6 @@ public class NodeCLI {
         }
     }
 
-    // In NodeCLI.java, update these methods:
     private static void requestCS() {
         if (currentNode == null) {
             System.out.println("✗ Not connected.");

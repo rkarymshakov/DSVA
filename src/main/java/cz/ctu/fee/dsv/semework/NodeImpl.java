@@ -69,9 +69,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         return Math.abs(idStr.hashCode());
     }
 
-    // =========================================================
     // === FAILURE SIMULATION ===
-    // =========================================================
 
     @Override
     public void kill() throws RemoteException {
@@ -96,9 +94,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         }
     }
 
-    // =========================================================
     // === LAMPORT'S MUTUAL EXCLUSION ALGORITHM ===
-    // =========================================================
 
     @Override
     public void enterCS() throws RemoteException {
@@ -244,9 +240,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         notifyAll();
     }
 
-    // =========================================================
     // === SHARED VARIABLE & TOPOLOGY ===
-    // =========================================================
 
     @Override
     public synchronized void setSharedVariable(int value) throws RemoteException {
@@ -285,15 +279,11 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         log("Added node " + otherNodeId + " (Total: " + knownNodes.size() + ")");
     }
 
-    // === CRITICAL FIX IS HERE ===
     @Override
     public void removeNode(long nodeId) throws RemoteException {
-        // 1. Remove from topology
         knownNodes.remove(nodeId);
         latestKnownTimestamps.remove(nodeId);
 
-        // 2. FIX: Remove any pending requests from this node!
-        // If we don't do this, we wait forever for a node that is gone.
         synchronized (requestQueue) {
             boolean removed = requestQueue.removeIf(r -> r.nodeId == nodeId);
             if (removed) {
@@ -303,7 +293,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         log("Removed node " + nodeId + " from topology (Total nodes: " + knownNodes.size() + ")");
 
-        // 3. Wake up waiting threads (in case this node was the one blocking us)
         checkQueueState();
     }
 
@@ -352,9 +341,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         log("LEAVE: Complete.");
     }
 
-    // =========================================================
     // === FAILURE DETECTION & HELPERS ===
-    // =========================================================
 
     @Override
     public void detectDeadNodes() throws RemoteException {
@@ -378,14 +365,12 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     private void handleDeadNode(long deadId) {
-        // Calls the same cleanup logic
         try {
-            removeNode(deadId); // Reuse the fixed logic
+            removeNode(deadId);
         } catch (RemoteException e) {
             // Local call, shouldn't throw
         }
 
-        // Notify others
         broadcast((id, node) -> node.notifyNodeDead(deadId));
     }
 
@@ -393,7 +378,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void notifyNodeDead(long deadNodeId) throws RemoteException {
         if(isDead) return;
         log("Received notification: Node " + deadNodeId + " is dead/gone.");
-        removeNode(deadNodeId); // Reuse the fixed logic (removes from topology AND queue)
+        removeNode(deadNodeId);
     }
 
     @Override
