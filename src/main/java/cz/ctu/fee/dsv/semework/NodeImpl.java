@@ -10,25 +10,36 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 /**
- * Implementation of Node interface with Lamport mutual exclusion and failure detection
+ * Implementation of Node interface with correct Lamport mutual exclusion
+ * and required failure simulation.
  */
 public class NodeImpl extends UnicastRemoteObject implements Node {
 
     private final long nodeId;
     private int logicalClock;
+
+    // Topology: ID -> Remote Reference
     private final Map<Long, Node> knownNodes;
+
+    // Lamport specific: Track the latest timestamp received from each neighbor
+    private final Map<Long, Integer> latestKnownTimestamps;
+
     private int sharedVariable;
     private boolean inCriticalSection;
     private int messageDelayMs;
+
+    // Queue sorted by timestamp, then by nodeId
     private final PriorityQueue<Request> requestQueue;
+
     private FileWriter logWriter;
-    private final Set<Long> replySet = new HashSet<>();
     private boolean wantCS = false;
     private int myRequestTimestamp = -1;
 
+    // === Simulation Flags ===
+    private boolean isDead = false;
+
     // Failure detection settings
     private static final int PING_TIMEOUT_MS = 3000;
-
     private static final DateTimeFormatter timeFormatter =
             DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
@@ -37,6 +48,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         this.nodeId = nodeId;
         this.logicalClock = 0;
         this.knownNodes = new ConcurrentHashMap<>();
+        this.latestKnownTimestamps = new ConcurrentHashMap<>();
         this.sharedVariable = 0;
         this.inCriticalSection = false;
         this.messageDelayMs = 0;
@@ -45,7 +57,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         try {
             this.logWriter = new FileWriter("node_" + nodeId + ".log", true);
         } catch (IOException e) {
-            System.err.println("Failed to create log file for node " + nodeId + ": " + e.getMessage());
+            System.err.println("Failed to create log file: " + e.getMessage());
             this.logWriter = null;
         }
 
@@ -53,161 +65,343 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     public static long generateId(String ip, int port) {
-        String[] array = ip.split("\\.");
-        long id = 0;
-        for (String part : array) {
-            long temp = Long.parseLong(part);
-            id = (id * 1000) + temp;
-        }
-        id = id + (long) port * 1000000000000L;
-        return id;
+        String idStr = ip + ":" + port;
+        return Math.abs(idStr.hashCode());
+    }
+
+    // =========================================================
+    // === FAILURE SIMULATION ===
+    // =========================================================
+
+    @Override
+    public void kill() throws RemoteException {
+        log("!!! SIMULATION: Node KILLED (Stopping communication) !!!");
+        this.isDead = true;
     }
 
     @Override
-    public void detectDeadNodes() throws RemoteException {
-        incrementClock();
-        log("=== Starting failure detection for " + knownNodes.size() + " nodes ===");
+    public void revive() throws RemoteException {
+        log("!!! SIMULATION: Node REVIVED (Resuming communication) !!!");
+        this.isDead = false;
+    }
 
-        List<Long> deadNodes = new ArrayList<>();
+    @Override
+    public boolean isAlive() throws RemoteException {
+        return !isDead;
+    }
 
-        for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
-            long nodeId = entry.getKey();
-            Node node = entry.getValue();
-
-            if (!isNodeAlive(nodeId, node)) {
-                log("DETECTED: Node " + nodeId + " is DEAD (no response within " + PING_TIMEOUT_MS + "ms)");
-                deadNodes.add(nodeId);
-            } else {
-                log("OK: Node " + nodeId + " is alive");
-            }
-        }
-
-        for (long deadNodeId : deadNodes) {
-            handleDeadNode(deadNodeId);
-        }
-
-        if (deadNodes.isEmpty()) {
-            log("=== Failure detection complete: All " + knownNodes.size() + " nodes alive ===");
-        } else {
-            log("=== Failure detection complete: Removed " + deadNodes.size() + " dead nodes ===");
-            log("Remaining nodes in topology: " + knownNodes.size());
+    private void checkSimulationStatus() throws RemoteException {
+        if (isDead) {
+            throw new RemoteException("Node " + nodeId + " is not responding (Simulated Failure)");
         }
     }
 
-    /**
-     * Check if a specific node is alive by pinging it with timeout
-     */
-    private boolean isNodeAlive(long nodeId, Node node) {
-        try {
-            PingTask pingTask = new PingTask(node);
-            Thread pingThread = new Thread(pingTask);
-            pingThread.start();
+    // =========================================================
+    // === LAMPORT'S MUTUAL EXCLUSION ALGORITHM ===
+    // =========================================================
 
-            pingThread.join(PING_TIMEOUT_MS);
+    @Override
+    public void enterCS() throws RemoteException {
+        if (isDead) return;
 
-            if (pingThread.isAlive()) {
-                pingThread.interrupt();
-                return false;
+        incrementClock();
+        wantCS = true;
+        myRequestTimestamp = logicalClock;
+
+        log("=== REQUESTING CRITICAL SECTION (My Timestamp: " + myRequestTimestamp + ") ===");
+
+        Request myReq = new Request(nodeId, myRequestTimestamp);
+
+        synchronized (requestQueue) {
+            requestQueue.add(myReq);
+            log("  Added self to queue: " + requestQueue);
+        }
+
+        broadcast((id, node) -> {
+            log("  -> Sending REQUEST to node " + id);
+            node.requestCS(nodeId, myRequestTimestamp);
+        });
+
+        waitForPermission();
+
+        inCriticalSection = true;
+        log(">>> ENTERED CRITICAL SECTION <<<");
+    }
+
+    private void waitForPermission() {
+        synchronized(this) {
+            while (!canEnterCS()) {
+                try {
+                    wait(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
+        }
+    }
 
-            return pingTask.isSuccess();
+    private synchronized boolean canEnterCS() {
+        if (!wantCS) return false;
+        if (isDead) return false;
 
-        } catch (InterruptedException e) {
-            log("ERROR: Ping interrupted for node " + nodeId);
+        Request first = requestQueue.peek();
+        if (first == null || first.nodeId != nodeId) {
             return false;
         }
-    }
 
-    /**
-     * Handle a dead node: remove locally and broadcast to all other nodes
-     */
-    private void handleDeadNode(long deadNodeId) {
-        log("=== HANDLING DEAD NODE " + deadNodeId + " ===");
-
-        knownNodes.remove(deadNodeId);
-        log("Removed node " + deadNodeId + " from local topology");
-
-        log("Broadcasting death of node " + deadNodeId + " to " + knownNodes.size() + " remaining nodes");
-
-        int successCount = 0;
-        int failureCount = 0;
-
-        // Make a copy to avoid concurrent modification
-        List<Map.Entry<Long, Node>> nodesCopy = new ArrayList<>(knownNodes.entrySet());
-
-        for (Map.Entry<Long, Node> entry : nodesCopy) {
-            long otherNodeId = entry.getKey();
-            Node otherNode = entry.getValue();
-
-            try {
-                log("  → Notifying node " + otherNodeId + " about dead node " + deadNodeId);
-                otherNode.notifyNodeDead(deadNodeId);
-                successCount++;
-            } catch (RemoteException e) {
-                log("  ✗ WARNING: Failed to notify node " + otherNodeId + ": " + e.getMessage());
-                failureCount++;
+        for (Long neighborId : knownNodes.keySet()) {
+            Integer lastTs = latestKnownTimestamps.get(neighborId);
+            if (lastTs == null || lastTs <= myRequestTimestamp) {
+                return false;
             }
         }
 
-        log("Broadcast complete: " + successCount + " notified, " + failureCount + " failed");
-        log("=== DEAD NODE " + deadNodeId + " HANDLING COMPLETE ===");
+        return true;
+    }
+
+    @Override
+    public void requestCS(long requestingNodeId, int timestamp) throws RemoteException {
+        checkSimulationStatus();
+        simulateDelay();
+        updateClock(timestamp);
+
+        latestKnownTimestamps.put(requestingNodeId, timestamp);
+
+        log("Received REQUEST from " + requestingNodeId + " (ts=" + timestamp + ")");
+
+        synchronized (requestQueue) {
+            requestQueue.add(new Request(requestingNodeId, timestamp));
+        }
+
+        incrementClock();
+        Node requester = knownNodes.get(requestingNodeId);
+        if (requester != null) {
+            try {
+                requester.replyCS(nodeId, logicalClock);
+            } catch (RemoteException e) {
+                log("  X Failed to reply to " + requestingNodeId);
+            }
+        }
+
+        checkQueueState();
+    }
+
+    @Override
+    public void replyCS(long replyingNodeId, int timestamp) throws RemoteException {
+        checkSimulationStatus();
+        simulateDelay();
+        updateClock(timestamp);
+
+        latestKnownTimestamps.put(replyingNodeId, timestamp);
+
+        log("Received REPLY from " + replyingNodeId + " (ts=" + timestamp + ")");
+
+        checkQueueState();
+    }
+
+    @Override
+    public void releaseCS(long releasingNodeId, int timestamp) throws RemoteException {
+        checkSimulationStatus();
+        simulateDelay();
+        updateClock(timestamp);
+
+        latestKnownTimestamps.put(releasingNodeId, timestamp);
+
+        log("Received RELEASE from " + releasingNodeId + " (ts=" + timestamp + ")");
+
+        synchronized (requestQueue) {
+            requestQueue.removeIf(r -> r.nodeId == releasingNodeId);
+        }
+
+        checkQueueState();
+    }
+
+    @Override
+    public void leaveCS() throws RemoteException {
+        if (!inCriticalSection) {
+            log("ERROR: Attempted to leave CS but was not in it.");
+            return;
+        }
+
+        log("=== LEAVING CRITICAL SECTION ===");
+        inCriticalSection = false;
+        wantCS = false;
+
+        incrementClock();
+
+        synchronized (requestQueue) {
+            requestQueue.removeIf(r -> r.nodeId == nodeId);
+        }
+
+        broadcast((id, node) -> {
+            node.releaseCS(nodeId, logicalClock);
+        });
+
+        log(">>> LEFT CRITICAL SECTION <<<");
+    }
+
+    private synchronized void checkQueueState() {
+        notifyAll();
+    }
+
+    // =========================================================
+    // === SHARED VARIABLE & TOPOLOGY ===
+    // =========================================================
+
+    @Override
+    public synchronized void setSharedVariable(int value) throws RemoteException {
+        checkSimulationStatus();
+        if (!inCriticalSection) {
+            throw new RemoteException("Illegal Access: Must be in Critical Section to write variable!");
+        }
+
+        incrementClock();
+        this.sharedVariable = value;
+        log("Writing Shared Variable: " + value);
+
+        broadcast((id, node) -> node.updateSharedVariable(value, logicalClock, nodeId));
+    }
+
+    @Override
+    public synchronized void updateSharedVariable(int value, int timestamp, long sourceNodeId) throws RemoteException {
+        if (isDead) return;
+        updateClock(timestamp);
+        this.sharedVariable = value;
+        log("Updated Shared Variable from " + sourceNodeId + " to " + value);
+    }
+
+    @Override
+    public synchronized int getSharedVariable() throws RemoteException {
+        checkSimulationStatus();
+        return sharedVariable;
+    }
+
+    @Override
+    public void addNode(long otherNodeId, Node nodeRef) throws RemoteException {
+        checkSimulationStatus();
+        incrementClock();
+        knownNodes.put(otherNodeId, nodeRef);
+        latestKnownTimestamps.put(otherNodeId, 0);
+        log("Added node " + otherNodeId + " (Total: " + knownNodes.size() + ")");
+    }
+
+    // === CRITICAL FIX IS HERE ===
+    @Override
+    public void removeNode(long nodeId) throws RemoteException {
+        // 1. Remove from topology
+        knownNodes.remove(nodeId);
+        latestKnownTimestamps.remove(nodeId);
+
+        // 2. FIX: Remove any pending requests from this node!
+        // If we don't do this, we wait forever for a node that is gone.
+        synchronized (requestQueue) {
+            boolean removed = requestQueue.removeIf(r -> r.nodeId == nodeId);
+            if (removed) {
+                log("Cleaned up pending request from removed node " + nodeId);
+            }
+        }
+
+        log("Removed node " + nodeId + " from topology (Total nodes: " + knownNodes.size() + ")");
+
+        // 3. Wake up waiting threads (in case this node was the one blocking us)
+        checkQueueState();
+    }
+
+    @Override
+    public Map<Long, Node> join(long joiningNodeId, Node joiningNodeRef) throws RemoteException {
+        checkSimulationStatus();
+        incrementClock();
+        log("Node " + joiningNodeId + " is joining the network");
+
+        Map<Long, Node> currentTopology = new HashMap<>(knownNodes);
+        currentTopology.put(this.nodeId, this);
+
+        this.addNode(joiningNodeId, joiningNodeRef);
+
+        try {
+            joiningNodeRef.updateSharedVariable(sharedVariable, logicalClock, nodeId);
+        } catch (RemoteException e) {
+            log("Error syncing var to new node: " + e.getMessage());
+        }
+
+        for (Map.Entry<Long, Node> entry : currentTopology.entrySet()) {
+            if (entry.getKey() != nodeId && entry.getKey() != joiningNodeId) {
+                try {
+                    entry.getValue().addNode(joiningNodeId, joiningNodeRef);
+                } catch (RemoteException e) {
+                    log("Error notifying node " + entry.getKey());
+                }
+            }
+        }
+        return currentTopology;
+    }
+
+    @Override
+    public void leave() throws RemoteException {
+        if (knownNodes.isEmpty()) return;
+
+        log("LEAVE: Leaving network...");
+        for (Node node : knownNodes.values()) {
+            try {
+                node.removeNode(this.nodeId);
+            } catch (RemoteException e) { /* ignore */ }
+        }
+        knownNodes.clear();
+        latestKnownTimestamps.clear();
+        requestQueue.clear();
+        log("LEAVE: Complete.");
+    }
+
+    // =========================================================
+    // === FAILURE DETECTION & HELPERS ===
+    // =========================================================
+
+    @Override
+    public void detectDeadNodes() throws RemoteException {
+        checkSimulationStatus();
+        incrementClock();
+        log("Starting failure detection...");
+
+        List<Long> dead = new ArrayList<>();
+        for(Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
+            try {
+                entry.getValue().ping();
+            } catch (RemoteException e) {
+                log("Node " + entry.getKey() + " is unreachable.");
+                dead.add(entry.getKey());
+            }
+        }
+
+        for(Long d : dead) {
+            handleDeadNode(d);
+        }
+    }
+
+    private void handleDeadNode(long deadId) {
+        // Calls the same cleanup logic
+        try {
+            removeNode(deadId); // Reuse the fixed logic
+        } catch (RemoteException e) {
+            // Local call, shouldn't throw
+        }
+
+        // Notify others
+        broadcast((id, node) -> node.notifyNodeDead(deadId));
     }
 
     @Override
     public void notifyNodeDead(long deadNodeId) throws RemoteException {
-        incrementClock();
-        log("NOTIFICATION: Received death notice for node " + deadNodeId);
-
-        if (knownNodes.containsKey(deadNodeId)) {
-            knownNodes.remove(deadNodeId);
-            log("✓ Removed dead node " + deadNodeId + " from topology (now " + knownNodes.size() + " nodes)");
-        } else {
-            log("⚠ Node " + deadNodeId + " was not in my topology (already removed or never existed)");
-        }
+        if(isDead) return;
+        log("Received notification: Node " + deadNodeId + " is dead/gone.");
+        removeNode(deadNodeId); // Reuse the fixed logic (removes from topology AND queue)
     }
 
-    /**
-     * Helper class to ping a node in a separate thread with timeout support
-     */
-    private static class PingTask implements Runnable {
-        private final Node node;
-        private boolean success = false;
-
-        PingTask(Node node) {
-            this.node = node;
-        }
-
-        @Override
-        public void run() {
-            try {
-                node.ping();
-                success = true;
-            } catch (RemoteException e) {
-                success = false;
-            }
-        }
-
-        boolean isSuccess() {
-            return success;
-        }
+    @Override
+    public void ping() throws RemoteException {
+        checkSimulationStatus();
     }
 
-    // === Helper methods ===
-
-    private void log(String message) {
-        String timestamp = LocalDateTime.now().format(timeFormatter);
-        String logLine = String.format("[%s][LC=%d][Node %d] %s",
-                timestamp, logicalClock, nodeId, message);
-        System.out.println(logLine);
-        if (logWriter != null) {
-            try {
-                logWriter.write(logLine + "\n");
-                logWriter.flush();
-            } catch (IOException e) {
-                System.err.println("Failed to write to log file: " + e.getMessage());
-            }
-        }
-    }
+    // === UTILS ===
 
     private synchronized void incrementClock() {
         logicalClock++;
@@ -221,14 +415,65 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         if (messageDelayMs > 0) {
             try {
                 Thread.sleep(messageDelayMs);
-                log("Message delayed by " + messageDelayMs + "ms");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }
     }
 
-    // === Node interface implementation ===
+    private void log(String message) {
+        String timestamp = LocalDateTime.now().format(timeFormatter);
+        String logLine = String.format("[%s][LC=%d][Node %d] %s",
+                timestamp, logicalClock, nodeId, message);
+        System.out.println(logLine);
+        if (logWriter != null) {
+            try {
+                logWriter.write(logLine + "\n");
+                logWriter.flush();
+            } catch (IOException e) { /* ignore */ }
+        }
+    }
+
+    public void shutdown() {
+        try { if(logWriter!=null) logWriter.close(); } catch(Exception e){}
+    }
+
+    protected void broadcast(NodeOperation operation) {
+        for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
+            try {
+                operation.execute(entry.getKey(), entry.getValue());
+            } catch (RemoteException e) {
+                log("Broadcasting to " + entry.getKey() + " failed (might be dead).");
+            }
+        }
+    }
+
+    // === INTERFACES & CLASSES ===
+
+    @Override
+    public void setMessageDelayMs(int delayMs) throws RemoteException {
+        this.messageDelayMs = delayMs;
+    }
+
+    @Override
+    public int getMessageDelayMs() throws RemoteException {
+        return messageDelayMs;
+    }
+
+    @Override
+    public boolean isInCriticalSection() throws RemoteException {
+        return inCriticalSection;
+    }
+
+    @Override
+    public String getQueueStatus() throws RemoteException {
+        return requestQueue.toString();
+    }
+
+    @Override
+    public List<Long> getKnownNodes() throws RemoteException {
+        return new ArrayList<>(knownNodes.keySet());
+    }
 
     @Override
     public long getNodeId() throws RemoteException {
@@ -238,319 +483,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public synchronized int getLogicalClock() throws RemoteException {
         return logicalClock;
-    }
-
-    @Override
-    public void addNode(long otherNodeId, Node nodeRef) throws RemoteException {
-        incrementClock();
-        knownNodes.put(otherNodeId, nodeRef);
-        log("Added node " + otherNodeId + " (Total: " + knownNodes.size() + ")");
-    }
-
-    @Override
-    public void removeNode(long nodeId) throws RemoteException {
-        incrementClock();
-        knownNodes.remove(nodeId);
-        log("Removed node " + nodeId + " (Total nodes: " + knownNodes.size() + ")");
-    }
-
-    @Override
-    public void leave() throws RemoteException {
-        incrementClock();
-
-        if (knownNodes.isEmpty()) {
-            log("LEAVE: Node " + nodeId + " is already isolated. Nothing to do.");
-            return;
-        }
-
-        log("=== LEAVE: Starting graceful departure from network ===");
-        log("Current topology size: " + knownNodes.size() + " nodes");
-
-        List<Map.Entry<Long, Node>> nodesCopy = new ArrayList<>(knownNodes.entrySet());
-
-        log("Step 1: Notifying all nodes to remove node " + nodeId);
-        int successCount = 0;
-        int failureCount = 0;
-
-        for (Map.Entry<Long, Node> entry : nodesCopy) {
-            long otherNodeId = entry.getKey();
-            Node otherNode = entry.getValue();
-
-            try {
-                log("  Notifying node " + otherNodeId + " to remove node " + nodeId);
-                otherNode.removeNode(this.nodeId);
-                successCount++;
-            } catch (RemoteException e) {
-                log("  WARNING: Failed to notify node " + otherNodeId + ": " + e.getMessage());
-                failureCount++;
-            }
-        }
-
-        log("Notification complete: " + successCount + " successful, " + failureCount + " failed");
-
-        log("Step 2: Clearing local topology");
-        int previousSize = knownNodes.size();
-        knownNodes.clear();
-        log("Cleared " + previousSize + " nodes from local topology");
-
-        if (!requestQueue.isEmpty()) {
-            log("Step 3: Clearing " + requestQueue.size() + " pending requests from queue");
-            requestQueue.clear();
-        }
-
-        log("=== LEAVE: Node " + nodeId + " has successfully left the network ===");
-    }
-
-    @Override
-    public List<Long> getKnownNodes() throws RemoteException {
-        return new ArrayList<>(knownNodes.keySet());
-    }
-
-    @Override
-    public Map<Long, Node> join(long joiningNodeId, Node joiningNodeRef) throws RemoteException {
-        incrementClock();
-        log("Node " + joiningNodeId + " is joining the network");
-
-        Map<Long, Node> existingNodes = new HashMap<>(knownNodes);
-        existingNodes.put(this.nodeId, this);
-
-        knownNodes.put(joiningNodeId, joiningNodeRef);
-        log("Added joining node " + joiningNodeId + " to my topology");
-
-        try {
-            log("Synchronizing shared variable to joining node " + joiningNodeId +
-                    " (value=" + sharedVariable + ")");
-            joiningNodeRef.updateSharedVariable(sharedVariable, logicalClock, nodeId);
-        } catch (RemoteException e) {
-            log("ERROR: Failed to sync shared variable to node " + joiningNodeId + ": " + e.getMessage());
-        }
-
-        // 4) Inform all existing nodes about the new node
-        log("Broadcasting new node " + joiningNodeId + " to all existing nodes");
-        for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
-            long existingNodeId = entry.getKey();
-            Node existingNode = entry.getValue();
-
-            if (existingNodeId != joiningNodeId) {
-                try {
-                    log("  Telling node " + existingNodeId + " to add node " + joiningNodeId);
-                    existingNode.addNode(joiningNodeId, joiningNodeRef);
-                } catch (RemoteException e) {
-                    log("  ERROR: Failed to notify node " + existingNodeId + ": " + e.getMessage());
-                }
-            }
-        }
-
-        log("Join complete. Returning " + existingNodes.size() + " existing nodes");
-        return existingNodes;
-    }
-
-    public void enterCS() throws RemoteException {
-        incrementClock();
-        wantCS = true;
-        myRequestTimestamp = logicalClock;
-
-        log("=== REQUESTING CRITICAL SECTION (timestamp=" + myRequestTimestamp + ") ===");
-
-        // Add my own request to queue
-        requestQueue.add(new Request(nodeId, myRequestTimestamp));
-
-        // Clear old replies
-        replySet.clear();
-
-        // Broadcast REQUEST to all nodes
-        broadcast((id, node) -> {
-            log("  → Sending REQUEST to node " + id);
-            node.requestCS(nodeId, myRequestTimestamp);
-        });
-
-        // Wait for permission
-        waitForPermission();
-
-        // Enter CS
-        inCriticalSection = true;
-        log(">>> ENTERED CRITICAL SECTION <<<");
-    }
-
-    private synchronized void waitForPermission() {
-        while (!canEnterCS()) {
-            try {
-                wait(100);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
-    private synchronized boolean canEnterCS() {
-        if (!wantCS) return false;
-
-        // Check: my request is first in queue
-        Request first = requestQueue.peek();
-        if (first == null || first.nodeId != nodeId) {
-            return false;
-        }
-
-        // Check: have replies from ALL other nodes
-        return replySet.size() == knownNodes.size();
-    }
-
-    @Override
-    public void requestCS(long requestingNodeId, int timestamp) throws RemoteException {
-        simulateDelay();
-        updateClock(timestamp);
-
-        log("Received REQUEST from node " + requestingNodeId + " (ts=" + timestamp + ")");
-
-        // Add to queue
-        synchronized(requestQueue) {
-            requestQueue.add(new Request(requestingNodeId, timestamp));
-            log("  Queue now: " + requestQueue);
-        }
-
-        // Send REPLY immediately
-        incrementClock();
-        Node requester = knownNodes.get(requestingNodeId);
-        if (requester != null) {
-            log("  → Sending REPLY to node " + requestingNodeId);
-            requester.replyCS(nodeId, logicalClock);
-        }
-    }
-
-    @Override
-    public void replyCS(long replyingNodeId, int timestamp) throws RemoteException {
-        simulateDelay();
-        updateClock(timestamp);
-
-        log("Received REPLY from node " + replyingNodeId + " (ts=" + timestamp + ")");
-
-        synchronized(this) {
-            replySet.add(replyingNodeId);
-            log("  Reply count: " + replySet.size() + "/" + knownNodes.size());
-            notifyAll(); // Wake up waiting thread
-        }
-    }
-
-    @Override
-    public void releaseCS(long releasingNodeId, int timestamp) throws RemoteException {
-        simulateDelay();
-        updateClock(timestamp);
-
-        log("Received RELEASE from node " + releasingNodeId + " (ts=" + timestamp + ")");
-
-        synchronized(requestQueue) {
-            requestQueue.removeIf(r -> r.nodeId == releasingNodeId);
-            log("  Queue after removal: " + requestQueue);
-        }
-    }
-
-    public void leaveCS() throws RemoteException {
-        if (!inCriticalSection) {
-            log("ERROR: Not in critical section!");
-            return;
-        }
-
-        incrementClock();
-        log("=== LEAVING CRITICAL SECTION ===");
-
-        inCriticalSection = false;
-        wantCS = false;
-
-        // Remove my request from queue
-        synchronized(requestQueue) {
-            requestQueue.removeIf(r -> r.nodeId == nodeId);
-        }
-
-        // Broadcast RELEASE
-        broadcast((id, node) -> {
-            log("  → Sending RELEASE to node " + id);
-            node.releaseCS(nodeId, logicalClock);
-        });
-
-        log(">>> LEFT CRITICAL SECTION <<<");
-    }
-
-    @Override
-    public synchronized int getSharedVariable() throws RemoteException {
-        incrementClock();
-        log("Reading shared variable: " + sharedVariable);
-        return sharedVariable;
-    }
-
-    @Override
-    public synchronized void setSharedVariable(int value) throws RemoteException {
-        if (!inCriticalSection) {
-            log("ERROR: setSharedVariable called outside CS");
-            throw new RemoteException("Not in critical section");
-        }
-
-        incrementClock();
-        log("Writing shared variable: " + sharedVariable + " -> " + value);
-        sharedVariable = value;
-
-        for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
-            entry.getValue().updateSharedVariable(value, logicalClock, nodeId);
-        }
-    }
-
-
-
-    @Override
-    public synchronized void updateSharedVariable(int value, int timestamp, long sourceNodeId)
-            throws RemoteException {
-        updateClock(timestamp);
-        log("UPDATE from node " + sourceNodeId + ": sharedVariable = " + value);
-        this.sharedVariable = value;
-    }
-
-
-    @Override
-    public void setMessageDelayMs(int delayMs) throws RemoteException {
-        incrementClock();
-        this.messageDelayMs = delayMs;
-        log("Message delay set to: " + delayMs + "ms");
-    }
-
-    @Override
-    public int getMessageDelayMs() throws RemoteException {
-        return messageDelayMs;
-    }
-
-    @Override
-    public synchronized boolean isInCriticalSection() throws RemoteException {
-        return inCriticalSection;
-    }
-
-    @Override
-    public String getQueueStatus() throws RemoteException {
-        return "Queue size: " + requestQueue.size() + ", In CS: " + inCriticalSection;
-    }
-
-    @Override
-    public void ping() throws RemoteException {
-        incrementClock();
-    }
-
-    public void shutdown() throws RemoteException {
-        log("Node shutting down");
-        if (logWriter != null) {
-            try {
-                logWriter.close();
-                logWriter = null;
-            } catch (IOException e) {
-                System.err.println("Error closing log file: " + e.getMessage());
-            }
-        }
-    }
-
-    protected void broadcast(NodeOperation operation) {
-        for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
-            try {
-                operation.execute(entry.getKey(), entry.getValue());
-            } catch (RemoteException e) {
-                log("ERROR: Failed to send to node " + entry.getKey() + ": " + e.getMessage());
-            }
-        }
     }
 
     @FunctionalInterface
@@ -577,7 +509,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         @Override
         public String toString() {
-            return String.format("Request{node=%d, ts=%d}", nodeId, timestamp);
+            return String.format("{N:%d, T:%d}", nodeId, timestamp);
         }
     }
 }

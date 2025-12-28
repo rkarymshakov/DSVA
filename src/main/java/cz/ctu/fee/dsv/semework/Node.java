@@ -7,7 +7,7 @@ import java.util.Map;
 
 /**
  * Remote interface for distributed node implementing Lamport's mutual exclusion algorithm
- * with shared variable functionality and failure detection
+ * with shared variable functionality and failure detection.
  */
 public interface Node extends Remote {
 
@@ -38,6 +38,25 @@ public interface Node extends Remote {
     void setMessageDelayMs(int delayMs) throws RemoteException;
     int getMessageDelayMs() throws RemoteException;
 
+    // === FAILURE SIMULATION (Required by Assignment) ===
+    /**
+     * Simulates a node crash (uncorrect disconnection).
+     * The node should stop responding to algorithm messages.
+     */
+    void kill() throws RemoteException;
+
+    /**
+     * Revives a previously killed node.
+     * The node resumes processing messages.
+     */
+    void revive() throws RemoteException;
+
+    /**
+     * Checks if the node is currently simulating a failure.
+     * @return true if node is "alive", false if "killed"
+     */
+    boolean isAlive() throws RemoteException;
+
     // === Status and debugging ===
     boolean isInCriticalSection() throws RemoteException;
     String getQueueStatus() throws RemoteException;
@@ -46,8 +65,6 @@ public interface Node extends Remote {
     // === FAILURE DETECTION ===
     /**
      * Check all known nodes for liveness. Remove dead nodes and notify others.
-     * This method pings all nodes with timeout, removes unresponsive nodes,
-     * and broadcasts their removal to all remaining nodes.
      */
     void detectDeadNodes() throws RemoteException;
 

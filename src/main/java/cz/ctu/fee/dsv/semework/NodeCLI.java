@@ -421,8 +421,8 @@ public class NodeCLI {
         System.out.println("  delay <ms>                    - Set message delay");
         System.out.println("  ping                          - Ping the node");
         System.out.println("  detect                        - Detect and remove dead nodes");
-        System.out.println("  request                       - Request critical section (TODO)");
-        System.out.println("  release                       - Release critical section (TODO)");
+        System.out.println("  request                       - Request critical section");
+        System.out.println("  release                       - Release critical section");
         System.out.println("  help                          - Show this help");
         System.out.println("  exit                          - Exit client");
         System.out.println();
