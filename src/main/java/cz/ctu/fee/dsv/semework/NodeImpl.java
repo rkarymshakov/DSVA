@@ -481,22 +481,18 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public synchronized void setSharedVariable(int value) throws RemoteException {
         if (!inCriticalSection) {
             log("ERROR: setSharedVariable called outside CS");
-            return;
+            throw new RemoteException("Not in critical section");
         }
 
         incrementClock();
         log("Writing shared variable: " + sharedVariable + " -> " + value);
         sharedVariable = value;
 
-        // BROADCAST UPDATE
         for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
-            try {
-                entry.getValue().updateSharedVariable(value, logicalClock, nodeId);
-            } catch (RemoteException e) {
-                log("Failed to propagate value to node " + entry.getKey());
-            }
+            entry.getValue().updateSharedVariable(value, logicalClock, nodeId);
         }
     }
+
 
 
     @Override
