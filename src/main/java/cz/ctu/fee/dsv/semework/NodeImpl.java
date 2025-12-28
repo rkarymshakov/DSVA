@@ -24,7 +24,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private FileWriter logWriter;
 
     // Failure detection settings
-    private static final int PING_TIMEOUT_MS = 3000; // 3 seconds timeout
+    private static final int PING_TIMEOUT_MS = 3000;
 
     private static final DateTimeFormatter timeFormatter =
             DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
@@ -60,8 +60,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         return id;
     }
 
-    // === FAILURE DETECTION IMPLEMENTATION ===
-
     @Override
     public void detectDeadNodes() throws RemoteException {
         incrementClock();
@@ -69,7 +67,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         List<Long> deadNodes = new ArrayList<>();
 
-        // Check each node in topology
         for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
             long nodeId = entry.getKey();
             Node node = entry.getValue();
@@ -82,7 +79,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             }
         }
 
-        // Handle each dead node: remove locally and broadcast
         for (long deadNodeId : deadNodes) {
             handleDeadNode(deadNodeId);
         }
@@ -100,21 +96,17 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
      */
     private boolean isNodeAlive(long nodeId, Node node) {
         try {
-            // Create a thread to ping the node
             PingTask pingTask = new PingTask(node);
             Thread pingThread = new Thread(pingTask);
             pingThread.start();
 
-            // Wait for response with timeout
             pingThread.join(PING_TIMEOUT_MS);
 
-            // If thread is still alive after timeout, node is dead
             if (pingThread.isAlive()) {
                 pingThread.interrupt();
                 return false;
             }
 
-            // Check if ping was successful
             return pingTask.isSuccess();
 
         } catch (InterruptedException e) {
@@ -129,11 +121,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private void handleDeadNode(long deadNodeId) {
         log("=== HANDLING DEAD NODE " + deadNodeId + " ===");
 
-        // Step 1: Remove from local topology
         knownNodes.remove(deadNodeId);
         log("Removed node " + deadNodeId + " from local topology");
 
-        // Step 2: Broadcast death notification to all remaining nodes
         log("Broadcasting death of node " + deadNodeId + " to " + knownNodes.size() + " remaining nodes");
 
         int successCount = 0;
@@ -403,7 +393,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void ping() throws RemoteException {
         incrementClock();
-        // Just respond - no logging to avoid spam during detection
     }
 
     public void shutdown() throws RemoteException {

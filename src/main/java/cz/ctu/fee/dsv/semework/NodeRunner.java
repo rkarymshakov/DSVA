@@ -6,15 +6,12 @@ import java.net.InetAddress;
 
 /**
  * Server class to start a node and register it in RMI registry
- * Usage: java NodeRunner <port>
- * Example: java NodeRunner 2010
  */
 public class NodeRunner {
 
     public static void main(String[] args) {
         int port = 2010;
 
-        // Parse command line arguments (only port is required now)
         if (args.length >= 1) {
             try {
                 port = Integer.parseInt(args[0]);
@@ -26,10 +23,8 @@ public class NodeRunner {
         }
 
         try {
-            // Get local IP address
             String hostname = InetAddress.getLocalHost().getHostAddress();
 
-            // Generate numeric node ID (exactly like in the example project)
             long nodeId = NodeImpl.generateId(hostname, port);
 
             System.out.println("=================================================");
@@ -39,7 +34,6 @@ public class NodeRunner {
             System.out.println("RMI Port: " + port);
             System.out.println("=================================================");
 
-            // Create the node instance with numeric ID
             NodeImpl nodeImpl = new NodeImpl(nodeId);
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
