@@ -31,7 +31,7 @@ fi
 
 # Locate the Fat JAR
 FAT_JAR_NAME=$(ls target/*.jar | grep -v "original" | head -n 1)
-FAT_JAR_PATH=$(pwd)/target/$FAT_JAR_NAME
+FAT_JAR_PATH=$(pwd)/$FAT_JAR_NAME
 echo "JAR created: $FAT_JAR_PATH"
 
 ### 3. DISTRIBUTE & START (REMOTE VMs)
