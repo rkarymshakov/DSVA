@@ -18,7 +18,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private final long nodeId;
     private int logicalClock;
 
-    // Topology: ID -> Remote Reference
     private final Map<Long, Node> knownNodes;
 
     // Lamport specific: Track the latest timestamp received from each neighbor
@@ -333,7 +332,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         for (Node node : knownNodes.values()) {
             try {
                 node.removeNode(this.nodeId);
-            } catch (RemoteException e) { /* ignore */ }
+            } catch (RemoteException e) { }
         }
         knownNodes.clear();
         latestKnownTimestamps.clear();
@@ -367,9 +366,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private void handleDeadNode(long deadId) {
         try {
             removeNode(deadId);
-        } catch (RemoteException e) {
-            // Local call, shouldn't throw
-        }
+        } catch (RemoteException e) { }
 
         broadcast((id, node) -> node.notifyNodeDead(deadId));
     }

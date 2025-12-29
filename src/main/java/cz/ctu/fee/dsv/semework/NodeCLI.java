@@ -4,9 +4,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Scanner;
 
-/**
- * Interactive client with failure detection support
- */
 public class NodeCLI {
 
     private static Node currentNode = null;
@@ -15,8 +12,7 @@ public class NodeCLI {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
-        System.out.println("=================================================");
-        System.out.println("Distributed System - Interactive Client");
+        System.out.println("Interactive CLI");
         System.out.println("=================================================");
         System.out.println();
 
@@ -65,6 +61,14 @@ public class NodeCLI {
 
                     case "clock":
                         showClock();
+                        break;
+
+                    case "kill":
+                        killNode();
+                        break;
+
+                    case "revive":
+                        reviveNode();
                         break;
 
                     case "getvar":
@@ -124,6 +128,34 @@ public class NodeCLI {
         }
     }
 
+    private static void killNode() {
+        if (currentNode == null) {
+            System.out.println("Not connected to any node.");
+            return;
+        }
+        try {
+            System.out.println("KILLING NODE " + currentNodeId + " (Simulating Failure)...");
+            currentNode.kill();
+            System.out.println("Node is now 'dead' (will throw exceptions on requests).");
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+
+    private static void reviveNode() {
+        if (currentNode == null) {
+            System.out.println("Not connected to any node.");
+            return;
+        }
+        try {
+            System.out.println("REVIVING NODE " + currentNodeId + "...");
+            currentNode.revive();
+            System.out.println("Node is back online.");
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+
     private static void connect(String hostname, int port) {
         try {
             Registry registry = LocateRegistry.getRegistry(hostname, port);
@@ -131,9 +163,9 @@ public class NodeCLI {
             currentNode = (Node) registry.lookup(registryName);
             currentNodeId = currentNode.getNodeId();
 
-            System.out.println("✓ Connected to node ID: " + currentNodeId);
+            System.out.println("Connected to node ID: " + currentNodeId);
         } catch (Exception e) {
-            System.err.println("✗ Connection failed: " + e.getMessage());
+            System.err.println("Connection failed: " + e.getMessage());
             currentNode = null;
             currentNodeId = -1;
         }
@@ -141,7 +173,7 @@ public class NodeCLI {
 
     private static void addNode(String hostname, int port) {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node. Use 'connect' first.");
+            System.out.println("Not connected to any node. Use 'connect' first.");
             return;
         }
 
@@ -157,10 +189,10 @@ public class NodeCLI {
 
             java.util.List<Long> currentNodeTopology = currentNode.getKnownNodes();
             if (!currentNodeTopology.isEmpty()) {
-                System.out.println("✗ ERROR: Current node " + currentNodeId + " already has " +
+                System.out.println("ERROR: Current node " + currentNodeId + " already has " +
                         currentNodeTopology.size() + " connections!");
-                System.out.println("✗ You can only add nodes FROM an isolated node TO a network node.");
-                System.out.println("✗ Current node topology:");
+                System.out.println("You can only add nodes FROM an isolated node TO a network node.");
+                System.out.println("Current node topology:");
                 for (Long id : currentNodeTopology) {
                     System.out.println("  - Node " + id);
                 }
@@ -170,8 +202,8 @@ public class NodeCLI {
                 return;
             }
 
-            System.out.println("✓ Current node " + currentNodeId + " is isolated (0 connections)");
-            System.out.println("→ Joining network through node " + networkNodeId);
+            System.out.println("Current node " + currentNodeId + " is isolated (0 connections)");
+            System.out.println("Joining network through node " + networkNodeId);
 
             System.out.println("\nStep 1: Calling join() on network node " + networkNodeId);
             java.util.Map<Long, Node> existingNodes = networkNode.join(currentNodeId, currentNode);
@@ -188,19 +220,19 @@ public class NodeCLI {
             }
 
             System.out.println("\n═══════════════════════════════════════════════");
-            System.out.println("✓ Join complete! Complete graph established.");
+            System.out.println("  Join complete! Complete graph established.");
             System.out.println("  Node " + currentNodeId + " now knows " + existingNodes.size() + " other nodes");
             System.out.println("  Total nodes in network: " + (existingNodes.size() + 1));
             System.out.println("═══════════════════════════════════════════════");
         } catch (Exception e) {
-            System.err.println("✗ Failed to add node: " + e.getMessage());
+            System.err.println("Failed to add node: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     private static void leave() {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node. Use 'connect' first.");
+            System.out.println("Not connected to any node. Use 'connect' first.");
             return;
         }
 
@@ -209,10 +241,7 @@ public class NodeCLI {
 
             if (topologyBefore.isEmpty()) {
                 System.out.println("═══════════════════════════════════════════════");
-                System.out.println("⚠ Node " + currentNodeId + " is already isolated");
-                System.out.println("═══════════════════════════════════════════════");
-                System.out.println("This node is not connected to any network.");
-                System.out.println("Nothing to do.");
+                System.out.println("Node " + currentNodeId + " is already isolated");
                 System.out.println("═══════════════════════════════════════════════");
                 return;
             }
@@ -232,26 +261,26 @@ public class NodeCLI {
             java.util.List<Long> topologyAfter = currentNode.getKnownNodes();
 
             System.out.println("\n═══════════════════════════════════════════════");
-            System.out.println("✓ Leave operation complete!");
+            System.out.println("Leave operation complete!");
             System.out.println("  Topology before: " + topologyBefore.size() + " nodes");
             System.out.println("  Topology after: " + topologyAfter.size() + " nodes");
 
             if (topologyAfter.isEmpty()) {
-                System.out.println("✓ Node " + currentNodeId + " is now isolated");
+                System.out.println("Node " + currentNodeId + " is now isolated");
             } else {
-                System.out.println("⚠ Warning: Node still has " + topologyAfter.size() + " connections");
+                System.out.println("Warning: Node still has " + topologyAfter.size() + " connections");
             }
             System.out.println("═══════════════════════════════════════════════");
 
         } catch (Exception e) {
-            System.err.println("✗ Failed to leave network: " + e.getMessage());
+            System.err.println("Failed to leave network: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     private static void listNodes() {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node.");
+            System.out.println("Not connected to any node.");
             return;
         }
 
@@ -267,13 +296,13 @@ public class NodeCLI {
             }
             System.out.println("Total: " + nodes.size() + " nodes");
         } catch (Exception e) {
-            System.err.println("✗ Error: " + e.getMessage());
+            System.err.println("Error: " + e.getMessage());
         }
     }
 
     private static void showStatus() {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node.");
+            System.out.println("Not connected to any node.");
             return;
         }
 
@@ -284,13 +313,13 @@ public class NodeCLI {
             System.out.println("  Queue: " + currentNode.getQueueStatus());
             System.out.println("  Message Delay: " + currentNode.getMessageDelayMs() + "ms");
         } catch (Exception e) {
-            System.err.println("✗ Error: " + e.getMessage());
+            System.err.println("Error: " + e.getMessage());
         }
     }
 
     private static void showClock() {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node.");
+            System.out.println("Not connected to any node.");
             return;
         }
 
@@ -298,13 +327,13 @@ public class NodeCLI {
             int clock = currentNode.getLogicalClock();
             System.out.println("Logical Clock: " + clock);
         } catch (Exception e) {
-            System.err.println("✗ Error: " + e.getMessage());
+            System.err.println("Error: " + e.getMessage());
         }
     }
 
     private static void getVariable() {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node.");
+            System.out.println("Not connected to any node.");
             return;
         }
 
@@ -312,55 +341,55 @@ public class NodeCLI {
             int value = currentNode.getSharedVariable();
             System.out.println("Shared Variable = " + value);
         } catch (Exception e) {
-            System.err.println("✗ Error: " + e.getMessage());
+            System.err.println("Error: " + e.getMessage());
         }
     }
 
     private static void setVariable(int value) {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node.");
+            System.out.println("Not connected to any node.");
             return;
         }
 
         try {
             currentNode.setSharedVariable(value);
-            System.out.println("✓ Shared Variable set to " + value);
+            System.out.println("Shared Variable set to " + value);
         } catch (Exception e) {
-            System.err.println("✗ Error: " + e.getMessage());
+            System.err.println("Error: " + e.getMessage());
         }
     }
 
     private static void setDelay(int delayMs) {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node.");
+            System.out.println("Not connected to any node.");
             return;
         }
 
         try {
             currentNode.setMessageDelayMs(delayMs);
-            System.out.println("✓ Message delay set to " + delayMs + "ms");
+            System.out.println("Message delay set to " + delayMs + "ms");
         } catch (Exception e) {
-            System.err.println("✗ Error: " + e.getMessage());
+            System.err.println("Error: " + e.getMessage());
         }
     }
 
     private static void ping() {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node.");
+            System.out.println("Not connected to any node.");
             return;
         }
 
         try {
             currentNode.ping();
-            System.out.println("✓ Ping successful");
+            System.out.println("Ping successful");
         } catch (Exception e) {
-            System.err.println("✗ Ping failed: " + e.getMessage());
+            System.err.println("Ping failed: " + e.getMessage());
         }
     }
 
     private static void detectDeadNodes() {
         if (currentNode == null) {
-            System.out.println("✗ Not connected to any node. Use 'connect' first.");
+            System.out.println("Not connected to any node. Use 'connect' first.");
             return;
         }
 
@@ -372,7 +401,7 @@ public class NodeCLI {
             currentNode.detectDeadNodes();
 
             System.out.println("\n═══════════════════════════════════════════════");
-            System.out.println("✓ Failure detection complete");
+            System.out.println("Failure detection complete");
             System.out.println("═══════════════════════════════════════════════");
             System.out.println("Check the node's console/log for detailed results.");
 
@@ -387,22 +416,31 @@ public class NodeCLI {
             System.out.println("✗ Not connected.");
             return;
         }
-        try {
-            currentNode.enterCS();
-        } catch (Exception e) {
-            System.err.println("✗ Error: " + e.getMessage());
-        }
+
+        new Thread(() -> {
+            try {
+                System.out.println("Requesting Critical Section (Background)...");
+
+                currentNode.enterCS();
+
+                System.out.println("\n[Async Notification] Entered Critical Section!");
+                System.out.print("> ");
+            } catch (Exception e) {
+                System.err.println("\n[Async Notification] Request failed: " + e.getMessage());
+                System.out.print("> ");
+            }
+        }).start();
     }
 
     private static void releaseCS() {
         if (currentNode == null) {
-            System.out.println("✗ Not connected.");
+            System.out.println("Not connected.");
             return;
         }
         try {
             currentNode.leaveCS();
         } catch (Exception e) {
-            System.err.println("✗ Error: " + e.getMessage());
+            System.err.println("Error: " + e.getMessage());
         }
     }
 
@@ -421,18 +459,10 @@ public class NodeCLI {
         System.out.println("  detect                        - Detect and remove dead nodes");
         System.out.println("  request                       - Request critical section");
         System.out.println("  release                       - Release critical section");
+        System.out.println("  kill                          - Simulate node failure");
+        System.out.println("  revive                        - Restore node from failure");
         System.out.println("  help                          - Show this help");
         System.out.println("  exit                          - Exit client");
         System.out.println();
-        System.out.println("IMPORTANT: To add a node to the network:");
-        System.out.println("  1. Start all nodes with NodeRunner");
-        System.out.println("  2. Connect to the NEW/ISOLATED node: connect <new-host> <new-port>");
-        System.out.println("  3. Add it to network: addnode <existing-network-host> <existing-port>");
-        System.out.println();
-        System.out.println("To detect dead nodes:");
-        System.out.println("  1. Kill a node with Ctrl+C");
-        System.out.println("  2. Connect to any alive node");
-        System.out.println("  3. Run: detect");
-        System.out.println("  4. Dead node will be removed and all nodes notified");
     }
 }
