@@ -11,21 +11,17 @@ NC='\033[0m'
 
 # Project root directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-OUTPUT_DIR="$SCRIPT_DIR/out"
+TARGET_JAR="$SCRIPT_DIR/target/SemExample-0.9-jar-with-dependencies.jar"
 
 case $ACTION in
     build)
-        echo -e "${BLUE}Building project...${NC}"
-        mkdir -p "$OUTPUT_DIR"
-
-        # Compile ALL .java files
-        javac -d "$OUTPUT_DIR" "$SCRIPT_DIR/src/main/java/cz/ctu/fee/dsv/semework"/*.java
+        echo -e "${BLUE}Building project with Maven...${NC}"
+        mvn clean package
 
         if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✓ Build successful! Classes in $OUTPUT_DIR${NC}"
+            echo -e "${GREEN}Build successful! JAR created at $TARGET_JAR${NC}"
         else
-            echo -e "${RED}✗ Build failed! Check if all .java files are in src/${NC}"
+            echo -e "${RED}Build failed! Check Maven output above${NC}"
             exit 1
         fi
         ;;
@@ -33,24 +29,29 @@ case $ACTION in
     server)
         if [ -z "$NODE" ] || [ -z "$PORT" ]; then
             echo "Usage: ./run.sh server <nodeName> <port>"
-            echo "Example: ./run.sh server nodeA 1099"
+            exit 1
+        fi
+        if [ ! -f "$TARGET_JAR" ]; then
+            echo -e "${RED}JAR not found. Run ./run.sh build first${NC}"
             exit 1
         fi
         echo -e "${BLUE}Starting node: $NODE on port $PORT${NC}"
-
-        # Run NodeRunner (main class is now NodeRunner in package server)
-        java -cp "$OUTPUT_DIR" cz.ctu.fee.dsv.semework.NodeRunner "$PORT" "$NODE"
+        java -cp "$TARGET_JAR" cz.ctu.fee.dsv.semework.NodeRunner "$PORT" "$NODE"
         ;;
 
     client)
+        if [ ! -f "$TARGET_JAR" ]; then
+            echo -e "${RED}JAR not found. Run ./run.sh build first${NC}"
+            exit 1
+        fi
         echo -e "${BLUE}Starting interactive CLI client (NodeCLI)...${NC}"
-        java -cp "$OUTPUT_DIR" cz.ctu.fee.dsv.semework.NodeCLI
+        java -cp "$TARGET_JAR" cz.ctu.fee.dsv.semework.NodeCLI
         ;;
 
     clean)
-        echo -e "${BLUE}Cleaning compiled files...${NC}"
-        rm -rf "$OUTPUT_DIR"
-        echo -e "${GREEN}✓ Clean complete!${NC}"
+        echo -e "${BLUE}Cleaning Maven target directory...${NC}"
+        mvn clean
+        echo -e "${GREEN}Clean complete!${NC}"
         ;;
 
     test)
@@ -72,15 +73,10 @@ case $ACTION in
         echo -e "${BLUE}Lamport Distributed Mutual Exclusion - Build & Run Script${NC}"
         echo ""
         echo "Usage:"
-        echo "  ./run.sh build                    - Compile all .java from src/ to out/"
+        echo "  ./run.sh build                    - Compile project and package with Maven"
         echo "  ./run.sh server <name> <port>     - Start one node (NodeRunner)"
         echo "  ./run.sh client                   - Start interactive CLI (NodeCLI)"
-        echo "  ./run.sh clean                    - Delete out/"
+        echo "  ./run.sh clean                    - Clean Maven target directory"
         echo "  ./run.sh test                     - Show test instructions"
-        echo ""
-        echo "Current assumptions:"
-        echo "  - All .java files are directly in src/ (flat structure)"
-        echo "  - Main node starter is NodeRunner"
-        echo "  - CLI is NodeCLI"
         ;;
 esac

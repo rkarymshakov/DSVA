@@ -1,41 +1,68 @@
 #!/bin/bash
 
-# read variable configuration
+# Load variables
 source bash_variables.sh
 
-### fetch from GIT
-# script use SSH keys - you can generate one with ssh-keygen (default values are OK)
-# keys are defaultly stored in /home/dsv/.ssh/id_rsa(.pub)
-# and then you need to add you public part of the key to gitlab - https://gitlab.fel.cvut.cz/-/user_settings/ssh_keys
+echo "================================================="
+echo "   LAMPORT SYSTEM: REMOTE DEPLOYMENT & START"
+echo "================================================="
+
+### 1. FETCH CODE (ON MASTER VM)
 if [ ! -d ${SEMWORK_HOMEDIR}/${CODE_SUBDIR} ] ; then
-  echo "code directory doesn't exists - creating one"
+  echo "Downloading code from Git..."
   mkdir -p ${SEMWORK_HOMEDIR}/${CODE_SUBDIR}
-  cd ${SEMWORK_HOMEDIR}
-  git clone ${GIT_URL} ${CODE_SUBDIR}
-  cd ${CODE_SUBDIR}
+  git clone ${GIT_URL} ${SEMWORK_HOMEDIR}/${CODE_SUBDIR}
+  cd ${SEMWORK_HOMEDIR}/${CODE_SUBDIR}
   git checkout ${GIT_BRANCH}
+else
+  echo "Updating existing code..."
+  cd ${SEMWORK_HOMEDIR}/${CODE_SUBDIR}
+  git pull
 fi
- cd ${SEMWORK_HOMEDIR}/${CODE_SUBDIR}
- git checkout ${GIT_BRANCH}
- git pull
 
-### compile/build codes
-# maven s needed - sudo apt install maven
-mvn clean
-mvn package
-# where is fat jar stored
-FAT_JAR=SemExample-0.9-jar-with-dependencies.jar
-FAT_JAR_PATH=target
+### 2. BUILD JAR (ON MASTER VM)
+echo "Compiling with Maven..."
+mvn clean package -DskipTests
 
-### upload to other nodes
-# script use sshpass - sudo apt install sshpass (ssh keys are better way)
-# -o StrictHostKeyChecking=no -> do not ask to check host key hash
-DSV_PASS=dsv
+if [ $? -ne 0 ]; then
+    echo "Build failed!"
+    exit 1
+fi
+
+# Locate the Fat JAR
+FAT_JAR_NAME=$(ls target/*.jar | grep -v "original" | head -n 1)
+FAT_JAR_PATH=$(pwd)/target/$FAT_JAR_NAME
+echo "JAR created: $FAT_JAR_PATH"
+
+### 3. DISTRIBUTE & START (REMOTE VMs)
+# We use sshpass to handle passwords automatically
+
 for ID in $(seq 1 $NUM_NODES) ; do
-  echo "Starting node $ID"
-  sshpass -p ${DSV_PASS} ssh -o StrictHostKeyChecking=no dsv@${NODE_IP[$ID]} mkdir -p ${SEMWORK_HOMEDIR}/NODE_${ID}
-  sshpass -p ${DSV_PASS} scp ${FAT_JAR_PATH}/${FAT_JAR} dsv@${NODE_IP[$ID]}:${SEMWORK_HOMEDIR}/NODE_${ID}/
-  # start tmux - https://www.root.cz/clanky/okna-v-terminalu-pomoci-tmux/
-  sshpass -p ${DSV_PASS} ssh dsv@${NODE_IP[$ID]} -- tmux new-session -d -s NODE_${ID}
-  sshpass -p ${DSV_PASS} ssh dsv@${NODE_IP[$ID]} -- "tmux send -t NODE_${ID} 'cd ${SEMWORK_HOMEDIR}/NODE_${ID}/ && java -cp ${FAT_JAR} cz.ctu.fee.dsv.semework.Node ${NODE_NICKNAME[$ID]} ${NODE_IP[$ID]} ${NODE_PORT[$ID]}' ENTER"
+  TARGET_IP=${NODE_IP[$ID]}
+  echo "-------------------------------------------------"
+  echo "Deploying Node $ID to $TARGET_IP..."
+
+  # A. Create Directory on Remote VM
+  sshpass -p ${SSH_PASS} ssh -o StrictHostKeyChecking=no ${SSH_USER}@${TARGET_IP} "mkdir -p ${SEMWORK_HOMEDIR}/NODE_${ID}"
+
+  # B. Copy JAR to Remote VM
+  echo "  -> Copying JAR..."
+  sshpass -p ${SSH_PASS} scp -o StrictHostKeyChecking=no ${FAT_JAR_PATH} ${SSH_USER}@${TARGET_IP}:${SEMWORK_HOMEDIR}/NODE_${ID}/semwork.jar
+
+  # C. Start Node in Tmux
+  echo "  -> Starting Application..."
+  # We kill old session if exists, then start new one
+  sshpass -p ${SSH_PASS} ssh -o StrictHostKeyChecking=no ${SSH_USER}@${TARGET_IP} "tmux kill-session -t NODE_${ID} 2>/dev/null; tmux new-session -d -s NODE_${ID}"
+
+  # Send the java command to the tmux session
+  # We set java.rmi.server.hostname so RMI works across VMs
+  CMD="cd ${SEMWORK_HOMEDIR}/NODE_${ID}/ && java -Djava.rmi.server.hostname=${TARGET_IP} -jar semwork.jar ${NODE_PORT[$ID]}"
+
+  sshpass -p ${SSH_PASS} ssh -o StrictHostKeyChecking=no ${SSH_USER}@${TARGET_IP} "tmux send -t NODE_${ID} '${CMD}' ENTER"
+
+  echo "  -> Node $ID started on $TARGET_IP (Ports: ${NODE_PORT[$ID]} / ${NODE_API_PORT[$ID]})"
 done
+
+echo "================================================="
+echo "   DEPLOYMENT COMPLETE"
+echo "================================================="

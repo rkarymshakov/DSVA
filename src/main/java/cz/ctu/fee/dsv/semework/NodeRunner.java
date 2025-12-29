@@ -4,75 +4,56 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.net.InetAddress;
 
-/**
- * Server class to start a node and register it in RMI registry
- */
 public class NodeRunner {
 
     public static void main(String[] args) {
-        int port = 2010;
+        int rmiPort = 2010;
 
         if (args.length >= 1) {
             try {
-                port = Integer.parseInt(args[0]);
+                rmiPort = Integer.parseInt(args[0]);
             } catch (NumberFormatException e) {
-                System.err.println("Invalid port number: " + args[0]);
-                System.err.println("Usage: java server.Server <port>");
+                System.err.println("Invalid port.");
                 return;
             }
         }
 
+        // === 1. Calculate REST Port (Offset by 1000) ===
+        // Example: If RMI is 2010, REST API is on 3010
+        int restPort = rmiPort + 1000;
+
         try {
             String hostname = InetAddress.getLocalHost().getHostAddress();
+            long nodeId = NodeImpl.generateId(hostname, rmiPort);
 
-            long nodeId = NodeImpl.generateId(hostname, port);
-
-            System.out.println("=================================================");
-            System.out.println("Starting Distributed Node");
-            System.out.println("=================================================");
-            System.out.println("Node ID: " + nodeId);
-            System.out.println("RMI Port: " + port);
-            System.out.println("=================================================");
-
+            System.out.println("Starting Node ID: " + nodeId);
             NodeImpl nodeImpl = new NodeImpl(nodeId);
 
+            // === 2. Start REST API ===
+            APIHandler apiHandler = new APIHandler(nodeImpl, restPort);
+            apiHandler.start();
+
+            // Shutdown Hook
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                try {
-                    System.out.println("\nShutting down node...");
-                    nodeImpl.shutdown();
-                    System.out.println("Node shutdown complete.");
-                } catch (Exception e) {
-                    System.err.println("Error during shutdown: " + e.getMessage());
-                }
+                System.out.println("Shutting down...");
+                apiHandler.stop(); // Stop REST
+                nodeImpl.shutdown();
             }));
 
-            // Create or get RMI registry on specified port
+            // === 3. RMI Setup (Existing Code) ===
             Registry registry;
             try {
-                registry = LocateRegistry.createRegistry(port);
-                System.out.println("Created new RMI registry on port " + port);
+                registry = LocateRegistry.createRegistry(rmiPort);
             } catch (Exception e) {
-                registry = LocateRegistry.getRegistry(port);
-                System.out.println("Using existing RMI registry on port " + port);
+                registry = LocateRegistry.getRegistry(rmiPort);
             }
+            registry.rebind(String.valueOf(rmiPort), nodeImpl);
 
-            // Register node under port number (string representation)
-            String registryName = String.valueOf(port);
-            registry.rebind(registryName, nodeImpl);
-
-            System.out.println("=================================================");
-            System.out.println("Node successfully registered in RMI registry");
-            System.out.println("Registry name: " + registryName);
-            System.out.println("Node is ready and waiting for requests...");
-            System.out.println("=================================================");
-            System.out.println();
-            System.out.println("To connect other nodes to this one, use:");
-            System.out.println("  Hostname: " + hostname);
-            System.out.println("  Port: " + port);
-            System.out.println("=================================================");
+            System.out.println("RMI Registry: port " + rmiPort);
+            System.out.println("REST API:     port " + restPort);
+            System.out.println("Ready.");
 
         } catch (Exception e) {
-            System.err.println("Server error: " + e.getMessage());
             e.printStackTrace();
         }
     }
