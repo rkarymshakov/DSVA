@@ -406,14 +406,14 @@ public class NodeCLI {
             System.out.println("Check the node's console/log for detailed results.");
 
         } catch (Exception e) {
-            System.err.println("✗ Detection failed: " + e.getMessage());
+            System.err.println("Detection failed: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     private static void requestCS() {
         if (currentNode == null) {
-            System.out.println("✗ Not connected.");
+            System.out.println("Not connected.");
             return;
         }
 
