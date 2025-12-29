@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### 1. GIT CONFIGURATION
-GIT_URL=git@github.com:rkarymshakov/DSVA.git
+GIT_URL=https://github.com/rkarymshakov/DSVA.git
 GIT_BRANCH=main
 
 ### 2. DEPLOYMENT CONFIGURATION
