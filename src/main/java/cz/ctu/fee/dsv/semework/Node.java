@@ -51,7 +51,7 @@ public interface Node extends Remote {
      */
     void revive() throws RemoteException;
 
-    public void syncQueue(List<NodeImpl.Request> queueState) throws RemoteException;
+    public void syncQueue(List<Request> queueState) throws RemoteException;
 
     // === Status and debugging ===
     boolean isInCriticalSection() throws RemoteException;

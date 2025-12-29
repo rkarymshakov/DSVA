@@ -336,22 +336,17 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         incrementClock();
         log("Node " + joiningNodeId + " is joining the network");
 
-        // 1. Prepare current topology to return
         Map<Long, Node> currentTopology = new HashMap<>(knownNodes);
         currentTopology.put(this.nodeId, this);
 
-        // 2. Add new node to local records
         this.addNode(joiningNodeId, joiningNodeRef);
 
-        // 3. Sync Shared Variable to new node
         try {
             joiningNodeRef.updateSharedVariable(sharedVariable, logicalClock, nodeId);
         } catch (RemoteException e) {
             log("Error syncing var to new node: " + e.getMessage());
         }
 
-        // 4. IMPORTANT: Sync Queue State to new node
-        // The new node needs to know about pending requests to respect CS order.
         try {
             List<Request> currentQueue;
             synchronized (requestQueue) {
@@ -362,7 +357,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             log("Error syncing queue to new node: " + e.getMessage());
         }
 
-        // 5. Notify all other nodes about the new node
         for (Map.Entry<Long, Node> entry : currentTopology.entrySet()) {
             if (entry.getKey() != nodeId && entry.getKey() != joiningNodeId) {
                 try {
@@ -473,7 +467,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             try {
                 logWriter.write(logLine + "\n");
                 logWriter.flush();
-            } catch (IOException e) { /* ignore */ }
+            } catch (IOException e) { }
         }
     }
 
@@ -490,8 +484,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             }
         }
     }
-
-    // === INTERFACES & CLASSES ===
 
     @Override
     public void setMessageDelayMs(int delayMs) throws RemoteException {
@@ -531,42 +523,5 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @FunctionalInterface
     protected interface NodeOperation {
         void execute(long nodeId, Node node) throws RemoteException;
-    }
-
-    protected static class Request implements java.io.Serializable, Comparable<Request> {
-        private static final long serialVersionUID = 1L;
-        final long nodeId;
-        final int timestamp;
-
-        Request(long nodeId, int timestamp) {
-            this.nodeId = nodeId;
-            this.timestamp = timestamp;
-        }
-
-        @Override
-        public int compareTo(Request other) {
-            if (this.timestamp != other.timestamp) {
-                return Integer.compare(this.timestamp, other.timestamp);
-            }
-            return Long.compare(this.nodeId, other.nodeId);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("{N:%d, T:%d}", nodeId, timestamp);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Request request = (Request) o;
-            return nodeId == request.nodeId && timestamp == request.timestamp;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(nodeId, timestamp);
-        }
     }
 }
