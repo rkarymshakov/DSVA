@@ -132,7 +132,7 @@ public class NodeCLI {
         try {
             System.out.println("KILLING NODE " + currentNodeId + " (Simulating Failure)...");
             currentNode.kill();
-            System.out.println("Node is now 'dead' (will throw exceptions on requests).");
+            System.out.println("Node is now 'dead'.");
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
         }

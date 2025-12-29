@@ -41,7 +41,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private boolean isDead = false;
 
     // Failure detection settings
-    private static final int PING_TIMEOUT_MS = 5000;
+    private static final int PING_TIMEOUT_MS = 3000;
     // Executor for handling async pings (avoids freezing the main thread)
     private final ExecutorService failureDetectionExecutor = Executors.newCachedThreadPool();
 
