@@ -115,12 +115,13 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     @Override
-    public void checkSimulationStatus() throws RemoteException {
-        if (!isDead) return;
-
-        try {
-            Thread.sleep(PING_TIMEOUT_MS * 2);
-        } catch (InterruptedException ignored) {}
+    public void ensureAlive() throws RemoteException {
+        if (isDead) {
+            try {
+                Thread.sleep(PING_TIMEOUT_MS * 2);
+            } catch (InterruptedException ignored) {}
+            throw new RemoteException("Node is dead");
+        }
     }
 
     // === LAMPORT'S MUTUAL EXCLUSION ALGORITHM ===
@@ -186,7 +187,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void requestCS(long requestingNodeId, int timestamp) throws RemoteException {
-        checkSimulationStatus();
+        ensureAlive();
         simulateDelay();
         updateClock(timestamp);
 
@@ -213,7 +214,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void replyCS(long replyingNodeId, int timestamp) throws RemoteException {
-        checkSimulationStatus();
+        ensureAlive();
         simulateDelay();
         updateClock(timestamp);
 
@@ -226,7 +227,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void releaseCS(long releasingNodeId, int timestamp) throws RemoteException {
-        checkSimulationStatus();
+        ensureAlive();
         simulateDelay();
         updateClock(timestamp);
 
@@ -273,7 +274,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public synchronized void setSharedVariable(int value) throws RemoteException {
-        checkSimulationStatus();
+        ensureAlive();
         if (!inCriticalSection) {
             throw new RemoteException("Illegal Access: Must be in Critical Section to write variable!");
         }
@@ -295,13 +296,13 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public synchronized int getSharedVariable() throws RemoteException {
-        checkSimulationStatus();
+        ensureAlive();
         return sharedVariable;
     }
 
     @Override
     public void addNode(long otherNodeId, Node nodeRef) throws RemoteException {
-        checkSimulationStatus();
+        ensureAlive();
         incrementClock();
         knownNodes.put(otherNodeId, nodeRef);
         latestKnownTimestamps.put(otherNodeId, 0);
@@ -331,7 +332,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
      */
     @Override
     public Map<Long, Node> join(long joiningNodeId, Node joiningNodeRef) throws RemoteException {
-        checkSimulationStatus();
+        ensureAlive();
         log("Node " + joiningNodeId + " is joining the network");
 
         Map<Long, Node> currentTopology = new HashMap<>(knownNodes);
@@ -369,7 +370,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void syncQueue(List<Request> queueState) throws RemoteException {
-        checkSimulationStatus();
+        ensureAlive();
         synchronized (requestQueue) {
             requestQueue.clear();
             requestQueue.addAll(queueState);
@@ -397,7 +398,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void detectDeadNodes() throws RemoteException {
-        checkSimulationStatus();
+        ensureAlive();
         log("Starting failure detection scan...");
 
         List<Long> deadNodes = new ArrayList<>();
@@ -421,7 +422,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private boolean isNodeReachable(long neighborId, Node neighbor) {
         Future<Boolean> future = failureDetectionExecutor.submit(() -> {
             try {
-                neighbor.checkSimulationStatus();
+                neighbor.ensureAlive();
                 return true;
             } catch (RemoteException e) {
                 return false;
