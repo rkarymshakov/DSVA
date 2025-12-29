@@ -72,50 +72,43 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void kill() throws RemoteException {
-        log("!!! SIMULATION: Node KILLED (Stopping communication) !!!");
+        log("SIMULATION: Node KILLED (Stopping communication)");
         this.isDead = true;
     }
 
     @Override
     public void revive() throws RemoteException {
-        log("!!! SIMULATION: Node REVIVED (Resuming communication) !!!");
-        this.isDead = false;
+        log("SIMULATION: Node REVIVING");
 
-        if (knownNodes.isEmpty()) {
-            log("Revive: No known nodes to reconnect to. I am alone.");
-            return;
+        this.isDead = false;
+        this.inCriticalSection = false;
+        this.wantCS = false;
+        synchronized (requestQueue) {
+            this.requestQueue.clear();
         }
 
-        log("Revive: Attempting to rejoin network via known neighbors...");
+        List<Node> potentialNeighbors = new ArrayList<>(knownNodes.values());
+        this.knownNodes.clear();
 
-        boolean rejoined = false;
-
-        for (Node neighbor : new ArrayList<>(knownNodes.values())) {
+        for (Node neighbor : potentialNeighbors) {
             try {
-                Map<Long, Node> currentNetworkTopology = neighbor.join(this.nodeId, this);
+                Map<Long, Node> freshTopology = neighbor.join(this.nodeId, this);
 
-                this.knownNodes.clear();
-                this.knownNodes.putAll(currentNetworkTopology);
-
+                this.knownNodes.putAll(freshTopology);
                 this.knownNodes.remove(this.nodeId);
 
-                for (Long id : this.knownNodes.keySet()) {
+                this.latestKnownTimestamps.clear();
+                for (Long id : knownNodes.keySet()) {
                     latestKnownTimestamps.put(id, 0);
                 }
 
-                log("Revive successful! Rejoined via neighbor. Network size: " + (knownNodes.size() + 1));
-                rejoined = true;
-                break;
+                log("Revive successful! Reconnected via neighbor.");
+                return;
 
-            } catch (RemoteException e) {
-                log("Neighbor unreachable, trying next...");
-            }
+            } catch (RemoteException e) { }
         }
 
-        if (!rejoined) {
-            log("Revive failed: All known neighbors are unreachable. I am isolated.");
-            knownNodes.clear();
-        }
+        log("Revive failed: No reachable neighbors found. I am isolated.");
     }
 
     private void checkSimulationStatus() throws RemoteException {
