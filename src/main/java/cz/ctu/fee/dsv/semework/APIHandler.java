@@ -5,6 +5,7 @@ import io.javalin.http.Context;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.Map;
 
 public class APIHandler {
 
@@ -33,15 +34,43 @@ public class APIHandler {
             int targetPort = Integer.parseInt(ctx.pathParam("port"));
 
             try {
-                // Connect to the remote node via RMI first
+                // 1. Get reference to the remote node (the entry point to the network)
                 Registry registry = LocateRegistry.getRegistry(ip, targetPort);
-                Node remoteNode = (Node) registry.lookup(String.valueOf(targetPort));
+                Node networkNode = (Node) registry.lookup(String.valueOf(targetPort));
 
-                // Perform the join operation logic from your NodeImpl
-                node.join(NodeImpl.generateId(ip, targetPort), remoteNode);
+                // 2. Execute the join logic.
+                // WE are the joining node. 'node' is our local NodeImpl.
+                // We ask 'node' to perform the join protocol with 'networkNode'.
+                // This keeps logic inside NodeImpl where it belongs.
+
+                // However, NodeImpl.join() as currently written is designed to be called remotely
+                // BY the joining node ON the existing node.
+                // We need a helper method in NodeImpl to initiate the join FROM our side.
+
+                // Let's add a helper method in NodeImpl or handle the specific RMI dance here concisely.
+                // Since we want to avoid logic duplication, let's look at what needs to happen:
+                // A. We call networkNode.join(ourId, ourRef)
+                // B. We get back the topology map.
+                // C. We update our local topology.
+
+                // To keep APIHandler clean, we should expose a method "joinNetwork(Node remoteNode)" on NodeImpl.
+                // But since we can't change the interface easily right now without breaking RMI compatibility
+                // if you haven't redeployed everything, let's do the clean sequence here:
+
+                long myId = node.getNodeId();
+                Map<Long, Node> networkTopology = networkNode.join(myId, node);
+
+                // Update our local node with the returned topology
+                for (Map.Entry<Long, Node> entry : networkTopology.entrySet()) {
+                    // Don't add ourselves
+                    if (entry.getKey() != myId) {
+                        node.addNode(entry.getKey(), entry.getValue());
+                    }
+                }
 
                 ctx.result("Joined network via " + ip + ":" + targetPort);
             } catch (Exception e) {
+                e.printStackTrace(); // Good for debugging in tmux logs
                 ctx.status(500).result("Join failed: " + e.getMessage());
             }
         });
