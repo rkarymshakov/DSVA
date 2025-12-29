@@ -56,7 +56,7 @@ public interface Node extends Remote {
     // === Status and debugging ===
     boolean isInCriticalSection() throws RemoteException;
     String getQueueStatus() throws RemoteException;
-    void ping() throws RemoteException;
+    void checkSimulationStatus() throws RemoteException;
 
     // === FAILURE DETECTION ===
     /**

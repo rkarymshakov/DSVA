@@ -91,10 +91,6 @@ public class NodeCLI {
                         setDelay(Integer.parseInt(parts[1]));
                         break;
 
-                    case "ping":
-                        ping();
-                        break;
-
                     case "detect":
                         detectDeadNodes();
                         break;
@@ -373,20 +369,6 @@ public class NodeCLI {
         }
     }
 
-    private static void ping() {
-        if (currentNode == null) {
-            System.out.println("Not connected to any node.");
-            return;
-        }
-
-        try {
-            currentNode.ping();
-            System.out.println("Ping successful");
-        } catch (Exception e) {
-            System.err.println("Ping failed: " + e.getMessage());
-        }
-    }
-
     private static void detectDeadNodes() {
         if (currentNode == null) {
             System.out.println("Not connected to any node. Use 'connect' first.");
@@ -455,7 +437,6 @@ public class NodeCLI {
         System.out.println("  getvar                        - Get shared variable value");
         System.out.println("  setvar <value>                - Set shared variable value");
         System.out.println("  delay <ms>                    - Set message delay");
-        System.out.println("  ping                          - Ping the node");
         System.out.println("  detect                        - Detect and remove dead nodes");
         System.out.println("  request                       - Request critical section");
         System.out.println("  release                       - Release critical section");

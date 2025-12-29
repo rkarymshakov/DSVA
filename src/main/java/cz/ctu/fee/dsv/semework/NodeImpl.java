@@ -1,13 +1,13 @@
 package cz.ctu.fee.dsv.semework;
 
-import java.rmi.RemoteException;
-import java.rmi.server.UnicastRemoteObject;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * Implementation of Node interface with correct Lamport mutual exclusion
@@ -31,6 +31,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private final PriorityQueue<Request> requestQueue;
 
     private FileWriter logWriter;
+    private static final DateTimeFormatter timeFormatter =
+            DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
+
     private boolean wantCS = false;
     private int myRequestTimestamp = -1;
 
@@ -38,9 +41,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private boolean isDead = false;
 
     // Failure detection settings
-    private static final int PING_TIMEOUT_MS = 3000;
-    private static final DateTimeFormatter timeFormatter =
-            DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
+    private static final int PING_TIMEOUT_MS = 5000;
+    // Executor for handling async pings (avoids freezing the main thread)
+    private final ExecutorService failureDetectionExecutor = Executors.newCachedThreadPool();
 
     public NodeImpl(long nodeId) throws RemoteException {
         super();
@@ -111,10 +114,13 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         log("Revive failed: No reachable neighbors found. I am isolated.");
     }
 
-    private void checkSimulationStatus() throws RemoteException {
-        if (isDead) {
-            throw new RemoteException("Node " + nodeId + " is not responding (Simulated Failure)");
-        }
+    @Override
+    public void checkSimulationStatus() throws RemoteException {
+        if (!isDead) return;
+
+        try {
+            Thread.sleep(PING_TIMEOUT_MS * 2);
+        } catch (InterruptedException ignored) {}
     }
 
     // === LAMPORT'S MUTUAL EXCLUSION ALGORITHM ===
@@ -393,21 +399,44 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void detectDeadNodes() throws RemoteException {
         checkSimulationStatus();
-        incrementClock();
-        log("Starting failure detection...");
+        log("Starting failure detection scan...");
 
-        List<Long> dead = new ArrayList<>();
-        for(Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
-            try {
-                entry.getValue().ping();
-            } catch (RemoteException e) {
-                log("Node " + entry.getKey() + " is unreachable.");
-                dead.add(entry.getKey());
+        List<Long> deadNodes = new ArrayList<>();
+
+        // We iterate over a copy of the keys to avoid concurrent modification
+        for(Long neighborId : new ArrayList<>(knownNodes.keySet())) {
+            Node neighborRef = knownNodes.get(neighborId);
+            if(neighborRef == null) continue;
+
+            if (!isNodeReachable(neighborId, neighborRef)) {
+                log("TIMEOUT/FAILURE: Node " + neighborId + " is unreachable.");
+                deadNodes.add(neighborId);
             }
         }
 
-        for(Long d : dead) {
-            handleDeadNode(d);
+        for(Long deadId : deadNodes) {
+            handleDeadNode(deadId);
+        }
+    }
+
+    private boolean isNodeReachable(long neighborId, Node neighbor) {
+        Future<Boolean> future = failureDetectionExecutor.submit(() -> {
+            try {
+                neighbor.checkSimulationStatus();
+                return true;
+            } catch (RemoteException e) {
+                return false;
+            }
+        });
+
+        try {
+            return future.get(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            log("  -> Node " + neighborId + " did not reply within " + PING_TIMEOUT_MS + "ms.");
+            future.cancel(true);
+            return false;
+        } catch (InterruptedException | ExecutionException e) {
+            return false;
         }
     }
 
@@ -424,11 +453,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         if(isDead) return;
         log("Received notification: Node " + deadNodeId + " is dead/gone.");
         removeNode(deadNodeId);
-    }
-
-    @Override
-    public void ping() throws RemoteException {
-        checkSimulationStatus();
     }
 
     // === UTILS ===
