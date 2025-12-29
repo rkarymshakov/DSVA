@@ -86,6 +86,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         this.isDead = false;
         this.inCriticalSection = false;
         this.wantCS = false;
+        this.logicalClock = 0;
         synchronized (requestQueue) {
             this.requestQueue.clear();
         }
