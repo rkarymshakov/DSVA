@@ -332,7 +332,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public Map<Long, Node> join(long joiningNodeId, Node joiningNodeRef) throws RemoteException {
         checkSimulationStatus();
-        incrementClock();
         log("Node " + joiningNodeId + " is joining the network");
 
         Map<Long, Node> currentTopology = new HashMap<>(knownNodes);
