@@ -51,11 +51,7 @@ public interface Node extends Remote {
      */
     void revive() throws RemoteException;
 
-    /**
-     * Checks if the node is currently simulating a failure.
-     * @return true if node is "alive", false if "killed"
-     */
-    boolean isAlive() throws RemoteException;
+    public void syncQueue(List<NodeImpl.Request> queueState) throws RemoteException;
 
     // === Status and debugging ===
     boolean isInCriticalSection() throws RemoteException;

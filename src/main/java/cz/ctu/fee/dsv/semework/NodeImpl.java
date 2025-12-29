@@ -80,11 +80,42 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void revive() throws RemoteException {
         log("!!! SIMULATION: Node REVIVED (Resuming communication) !!!");
         this.isDead = false;
-    }
 
-    @Override
-    public boolean isAlive() throws RemoteException {
-        return !isDead;
+        if (knownNodes.isEmpty()) {
+            log("Revive: No known nodes to reconnect to. I am alone.");
+            return;
+        }
+
+        log("Revive: Attempting to rejoin network via known neighbors...");
+
+        boolean rejoined = false;
+
+        for (Node neighbor : new ArrayList<>(knownNodes.values())) {
+            try {
+                Map<Long, Node> currentNetworkTopology = neighbor.join(this.nodeId, this);
+
+                this.knownNodes.clear();
+                this.knownNodes.putAll(currentNetworkTopology);
+
+                this.knownNodes.remove(this.nodeId);
+
+                for (Long id : this.knownNodes.keySet()) {
+                    latestKnownTimestamps.put(id, 0);
+                }
+
+                log("Revive successful! Rejoined via neighbor. Network size: " + (knownNodes.size() + 1));
+                rejoined = true;
+                break;
+
+            } catch (RemoteException e) {
+                log("Neighbor unreachable, trying next...");
+            }
+        }
+
+        if (!rejoined) {
+            log("Revive failed: All known neighbors are unreachable. I am isolated.");
+            knownNodes.clear();
+        }
     }
 
     private void checkSimulationStatus() throws RemoteException {
@@ -295,23 +326,43 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         checkQueueState();
     }
 
+    /**
+     * Entry point for a new node joining the network.
+     * Returns the current topology so the new node knows everyone.
+     */
     @Override
     public Map<Long, Node> join(long joiningNodeId, Node joiningNodeRef) throws RemoteException {
         checkSimulationStatus();
         incrementClock();
         log("Node " + joiningNodeId + " is joining the network");
 
+        // 1. Prepare current topology to return
         Map<Long, Node> currentTopology = new HashMap<>(knownNodes);
         currentTopology.put(this.nodeId, this);
 
+        // 2. Add new node to local records
         this.addNode(joiningNodeId, joiningNodeRef);
 
+        // 3. Sync Shared Variable to new node
         try {
             joiningNodeRef.updateSharedVariable(sharedVariable, logicalClock, nodeId);
         } catch (RemoteException e) {
             log("Error syncing var to new node: " + e.getMessage());
         }
 
+        // 4. IMPORTANT: Sync Queue State to new node
+        // The new node needs to know about pending requests to respect CS order.
+        try {
+            List<Request> currentQueue;
+            synchronized (requestQueue) {
+                currentQueue = new ArrayList<>(requestQueue);
+            }
+            joiningNodeRef.syncQueue(currentQueue);
+        } catch (RemoteException e) {
+            log("Error syncing queue to new node: " + e.getMessage());
+        }
+
+        // 5. Notify all other nodes about the new node
         for (Map.Entry<Long, Node> entry : currentTopology.entrySet()) {
             if (entry.getKey() != nodeId && entry.getKey() != joiningNodeId) {
                 try {
@@ -322,6 +373,16 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             }
         }
         return currentTopology;
+    }
+
+    @Override
+    public void syncQueue(List<Request> queueState) throws RemoteException {
+        checkSimulationStatus();
+        synchronized (requestQueue) {
+            requestQueue.clear();
+            requestQueue.addAll(queueState);
+        }
+        log("Synced request queue (Size: " + requestQueue.size() + ")");
     }
 
     @Override
@@ -472,7 +533,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         void execute(long nodeId, Node node) throws RemoteException;
     }
 
-    protected static class Request implements Comparable<Request> {
+    protected static class Request implements java.io.Serializable, Comparable<Request> {
+        private static final long serialVersionUID = 1L;
         final long nodeId;
         final int timestamp;
 
@@ -492,6 +554,19 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         @Override
         public String toString() {
             return String.format("{N:%d, T:%d}", nodeId, timestamp);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Request request = (Request) o;
+            return nodeId == request.nodeId && timestamp == request.timestamp;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(nodeId, timestamp);
         }
     }
 }
