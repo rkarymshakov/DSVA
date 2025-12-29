@@ -10,8 +10,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * Implementation of Node interface with correct Lamport mutual exclusion
- * and required failure simulation.
+ * Implementation of Node interface with correct Lamport mutual exclusion and required failure simulation.
  */
 public class NodeImpl extends UnicastRemoteObject implements Node {
 
@@ -37,10 +36,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private boolean wantCS = false;
     private int myRequestTimestamp = -1;
 
-    // === Simulation Flags ===
-    private boolean isDead = false;
+    private boolean isDead = false; // If true, node simulates a crash
 
-    // Failure detection settings
     private static final int PING_TIMEOUT_MS = 3000;
     // Executor for handling async pings (avoids freezing the main thread)
     private final ExecutorService failureDetectionExecutor = Executors.newCachedThreadPool();
@@ -206,7 +203,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             try {
                 requester.replyCS(nodeId, logicalClock);
             } catch (RemoteException e) {
-                log("  X Failed to reply to " + requestingNodeId);
+                log("  Failed to reply to " + requestingNodeId);
             }
         }
 
@@ -327,10 +324,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         checkQueueState();
     }
 
-    /**
-     * Entry point for a new node joining the network.
-     * Returns the current topology so the new node knows everyone.
-     */
     @Override
     public Map<Long, Node> join(long joiningNodeId, Node joiningNodeRef) throws RemoteException {
         ensureAlive();
