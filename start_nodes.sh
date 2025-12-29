@@ -30,7 +30,8 @@ if [ $? -ne 0 ]; then
 fi
 
 # Locate the Fat JAR
-FAT_JAR_NAME=$(ls target/*.jar | grep -v "original" | head -n 1)
+FAT_JAR_PATH=$(ls $(pwd)/target/*-jar-with-dependencies.jar | head -n 1)
+echo "JAR created: $FAT_JAR_PATH"
 FAT_JAR_PATH=$(pwd)/$FAT_JAR_NAME
 echo "JAR created: $FAT_JAR_PATH"
 
