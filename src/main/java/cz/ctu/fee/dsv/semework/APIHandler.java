@@ -20,7 +20,6 @@ public class APIHandler {
 
         // === TOPOLOGY OPERATIONS ===
 
-        // Join: /join/127.0.0.1/2011
         app.post("/join/{ip}/{port}", ctx -> {
             String ip = ctx.pathParam("ip");
             int targetPort = Integer.parseInt(ctx.pathParam("port"));
@@ -35,7 +34,6 @@ public class APIHandler {
             }
         });
 
-        // Leave: /leave
         app.post("/leave", ctx -> {
             node.leave();
             ctx.result("Left the network.");
@@ -83,12 +81,12 @@ public class APIHandler {
 
         // === SHARED VARIABLE ===
 
-        // Get Variable: /var
+        // Get Variable
         app.get("/var", ctx -> {
             ctx.result(String.valueOf(node.getSharedVariable()));
         });
 
-        // Set Variable: /var/100
+        // Set Variable
         app.post("/var/{value}", ctx -> {
             int val = Integer.parseInt(ctx.pathParam("value"));
             node.setSharedVariable(val);
