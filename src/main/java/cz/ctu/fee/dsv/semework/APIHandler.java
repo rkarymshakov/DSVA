@@ -1,9 +1,6 @@
 package cz.ctu.fee.dsv.semework;
 
 import io.javalin.Javalin;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.util.Map;
 
 public class APIHandler {
 
@@ -17,7 +14,6 @@ public class APIHandler {
     }
 
     public void start() {
-        // Start Javalin server
         app = Javalin.create().start(port);
 
         System.out.println("REST API started on port " + port);
