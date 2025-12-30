@@ -1,3 +1,4 @@
+```markdown
 # Lamport Mutual Exclusion - Distributed System Project
 
 ---
@@ -6,281 +7,162 @@
 **Problem Type:** Exclusive Access  
 **Topology:** Complete Graph  
 **Language:** Java  
-**Communication:** RMI  
-**Functionality:** Shared Variable
+**Communication:** RMI (Remote Method Invocation) + REST API  
+**Functionality:** Shared Variable Synchronization  
 
 ---
 
 ## Project Overview
-This project implements Lamport's distributed mutual exclusion algorithm with shared variable functionality using Java RMI.
+
+This project implements **Lamport's distributed mutual exclusion algorithm** to synchronize access to a shared variable across multiple nodes. It is designed to run in a distributed environment (multiple VMs) but can also simulate a cluster on a single machine.
+
+Key features include:
+* **Java RMI** for internal node-to-node communication (algorithm messages).
+* **REST API** (Javalin) for external control and monitoring.
+* **Automated Bash Scripts** for deployment, startup, and testing.
+* **Interactive CLI** for manual debugging and control.
+* **Fault Tolerance:** Detection of dead nodes and topology recovery.
 
 ## Project Structure
-```
-lamport-project/ (TODO: update structure)
-├── src/
-│   ├── compute/
-│   │   └── Node.java          # Remote interface for distributed nodes
-│   ├── server/
-│   │   ├── NodeImpl.java      # Node implementation (basic version)
-│   │   └── Server.java        # Server to start and register nodes
-│   └── client/
-│       └── NodeCLI.java        # Interactive client for testing
+
+```text
+/home/dsv/semwork/
+├── code/                       # Source code repository
+│   ├── src/main/java/.../      # Java Source Files
+│   │   ├── Node.java           # RMI Interface
+│   │   ├── NodeImpl.java       # Core Algorithm & Logic
+│   │   ├── APIHandler.java     # REST API Controller
+│   │   ├── NodeRunner.java     # Main Entry Point
+│   │   └── NodeCLI.java        # Interactive Client
+│   └── pom.xml                 # Maven Configuration
+├── bash_variables.sh           # Configuration (IPs, Ports)
+├── start_nodes.sh              # Deploys and starts nodes
+├── control_nodes.sh            # Runs the automated test scenario
+├── stop_system.sh              # Kills all running nodes
 └── README.md
+
 ```
 
-## Requirements
-- Java 8 or higher
-- Multiple terminal windows or machines for testing
+## Prerequisites
 
-## Building the Project
+* **Java 21** (or compatible JDK)
+* **Maven** (for building the project)
+* **sshpass** (for automated deployment scripts)
+* **curl** (for controlling nodes via REST API)
 
-### Option 1: Using javac directly
-```bash
-cd lamport-project/src
-javac compute/*.java server/*.java client/*.java
-```
+## Configuration
 
-### Option 2: Create a build script
-Save this as `build.sh`:
-```bash
-#!/bin/bash
-cd src
-javac -d ../bin compute/*.java server/*.java client/*.java
-echo "Build complete!"
-```
-
-Then run:
-```bash
-chmod +x build.sh
-./build.sh
-```
-
-## Running the System
-
-### Step 1: Start Multiple Nodes
-
-Open **separate terminal windows** for each node.
-
-**Terminal 1 - Start Node A on port 1099:**
-```bash
-cd lamport-project/src
-java NodeRunner 1099 nodeA
-```
-
-**Terminal 2 - Start Node B on port 1100:**
-```bash
-cd lamport-project/src
-java NodeRunner 1100 nodeB
-```
-
-**Terminal 3 - Start Node C on port 1101:**
-```bash
-cd lamport-project/src
-java NodeRunner 1101 nodeC
-```
-
-Each node will display:
-```
-=================================================
-Starting Distributed Node
-=================================================
-Node ID: nodeA@192.168.1.10:1099
-RMI Port: 1099
-=================================================
-Node successfully registered in RMI registry
-Node is ready and waiting for requests...
-=================================================
-```
-
-### Step 2: Connect Nodes and Build Topology
-
-Open another terminal for the **interactive client**:
+Edit `bash_variables.sh` to configure your environment:
 
 ```bash
-cd lamport-project/src
-java NodeCLI
+# bash_variables.sh
+NUM_NODES=2                     # Number of nodes to deploy (Min: 5 for final presentation)
+NODE_IP[1]=192.168.56.106       # IP of Node 1 (Master)
+NODE_IP[2]=192.168.56.107       # IP of Node 2 (Worker)
+...
+
 ```
 
-You'll see the interactive prompt:
-```
-=================================================
-Distributed System - Interactive NodeCLI
-=================================================
+*Note: Ports are auto-calculated. RMI starts at 2010, REST API starts at 3010.*
 
-Available commands:
-  connect <host> <port> <n>  - Connect to a node
-  addnode <host> <port> <n>  - Add a node to topology
-  ...
+## Deployment & Running
 
->
-```
+### 1. automated Deployment (Recommended)
 
-**Now build the complete graph topology:**
+This script will compile the code, create the JAR (with dependencies), copy it to all defined remote VMs, and start the nodes in background `tmux` sessions.
 
 ```bash
-# Connect to nodeA
-> connect localhost 1099 nodeA
-✓ Connected to node: nodeA@192.168.1.10:1099
+./start_nodes.sh
 
-# Add nodeB to nodeA's topology
-> addnode localhost 1100 nodeB
-✓ Node added to topology: nodeB@192.168.1.10:1100
-  (Bidirectional connection established)
-
-# Add nodeC to nodeA's topology
-> addnode localhost 1101 nodeC
-✓ Node added to topology: nodeC@192.168.1.10:1101
-  (Bidirectional connection established)
-
-# List all nodes known to nodeA
-> list
-Known nodes in topology:
-  - nodeB@192.168.1.10:1100
-  - nodeC@192.168.1.10:1101
-
-# Now connect to nodeB and add nodeC to complete the graph
-> connect localhost 1100 nodeB
-✓ Connected to node: nodeB@192.168.1.10:1100
-
-> addnode localhost 1101 nodeC
-✓ Node added to topology: nodeC@192.168.1.10:1101
-  (Bidirectional connection established)
 ```
 
-## Testing Basic Functionality
+### 2. Manual Running (Local/Dev)
 
-### Test 1: Logical Clock
-```bash
-> connect localhost 1099 nodeA
-> clock
-Logical Clock: 2
-
-> ping
-✓ Ping successful
-
-> clock
-Logical Clock: 3
-```
-
-### Test 2: Shared Variable
-```bash
-> getvar
-Shared Variable = 0
-
-> setvar 42
-✓ Shared Variable set to 42
-
-> getvar
-Shared Variable = 42
-```
-
-### Test 3: Message Delay (for testing concurrent situations)
-```bash
-> delay 1000
-✓ Message delay set to 1000ms
-
-> ping
-✓ Ping successful
-# (Notice the delay in the server logs)
-
-> delay 0
-✓ Message delay set to 0ms
-```
-
-### Test 4: Node Status
-```bash
-> status
-Node Status:
-  Node ID: nodeA@192.168.1.10:1099
-  In Critical Section: false
-  Queue: Queue size: 0, In CS: false
-  Message Delay: 0ms
-```
-
-## What Works Now
-
-✅ RMI infrastructure
-✅ Node registration and lookup
-✅ Complete graph topology building (manually via client)
-✅ Logical clock incrementation
-✅ Message delay simulation
-✅ Basic shared variable read/write
-✅ Interactive CLI for testing
-
-## What's NOT Implemented Yet (TODO)
-
-❌ Lamport's mutual exclusion algorithm logic
-❌ Request queue management
-❌ Automatic CS request/reply/release
-❌ True distributed synchronization
-❌ REST API
-❌ Automatic topology recovery
-❌ Persistent logging to file
-
-## Next Steps
-
-1. **Implement Lamport Algorithm:**
-    - Complete the `requestCS()` logic in NodeImpl
-    - Implement request queue management
-    - Add reply tracking
-    - Implement CS entry/exit conditions
-
-2. **Add REST API:**
-    - Embed HTTP server (e.g., using Spark Java or Spring Boot)
-    - Implement endpoints: `/join`, `/leave`, `/kill`, `/enterCS`, `/leaveCS`, `/setDelay`
-
-3. **Add File Logging:**
-    - Log all operations with Lamport timestamps
-    - Create separate log file per node
-
-4. **Test Scenarios:**
-    - Multiple concurrent CS requests
-    - Node failure during CS
-    - Message delays creating race conditions
-
-## Typical Test Scenario
+If you want to run a node manually without the scripts:
 
 ```bash
-# Terminal 1: nodeA
-java NodeRunner 1099 nodeA
+# Build the project
+mvn clean package
 
-# Terminal 2: nodeB  
-java NodeRunner 1100 nodeB
+# Run Node 1 (RMI Port 2010)
+java -Djava.rmi.server.hostname=YOUR_IP -jar target/SemExample-0.9-jar-with-dependencies.jar 2010
 
-# Terminal 3: nodeC
-java NodeRunner 1101 nodeC
-
-# Terminal 4: NodeCLI - build topology and test
-java NodeCLI
-> connect localhost 1099 nodeA
-> addnode localhost 1100 nodeB
-> addnode localhost 1101 nodeC
-> connect localhost 1100 nodeB
-> addnode localhost 1101 nodeC
-> list
-> status
-> getvar
-> setvar 100
 ```
 
-## Notes
+## controlling the System
 
-- Each node has a unique ID: `nodeName@ip:port`
-- Logical clocks increment on internal events and message sends
-- Logical clocks update on message receives: `max(local, received) + 1`
-- Complete graph topology means every node knows every other node
-- Message delays simulate slow networks for testing race conditions
+### Option A: Automated Test Scenario
 
-## Assignment Requirements Checklist
+This script executes a sequence of operations: Joining, Status Check, Mutual Exclusion Request, and Variable Write.
 
-- [x] Java + RMI
-- [x] Complete graph topology
-- [x] Shared variable functionality
-- [x] Logical clock timestamps
-- [x] Unique node identification
-- [x] Message delay capability
-- [x] Interactive CLI
-- [ ] Lamport algorithm (TODO)
-- [ ] REST API (TODO)
-- [ ] File logging (TODO)
-- [ ] Batch mode (TODO)
+```bash
+./control_nodes.sh
+
+```
+
+### Option B: Interactive CLI
+
+You can connect to any running node using the provided CLI tool.
+
+```bash
+# Run the CLI
+java -cp target/SemExample-0.9-jar-with-dependencies.jar cz.ctu.fee.dsv.semework.NodeCLI
+
+```
+
+**Common CLI Commands:**
+
+* `connect <ip> <port>`: Connect to a running node (e.g., `connect 192.168.56.106 2010`).
+* `status`: View logical clock, queue status, and known neighbors.
+* `request`: Request entry to the Critical Section.
+* `getvar` / `setvar <val>`: Read or write the shared variable.
+* `kill` / `revive`: Simulate a node crash/recovery.
+* `detect`: Run failure detection to clean up dead nodes.
+
+### Option C: REST API (curl)
+
+You can control nodes directly via HTTP requests.
+
+* **Status:** `curl http://IP:3010/status`
+* **Join:** `curl -X POST http://IP:3020/join/MASTER_IP/MASTER_PORT`
+* **Enter CS:** `curl -X POST http://IP:3010/enter-cs`
+* **Write Variable:** `curl -X POST http://IP:3010/var/100`
+
+## Algorithm Implementation Details
+
+### Lamport's Mutual Exclusion
+
+1. **Requesting:** When a node wants to enter the Critical Section (CS), it increments its clock, adds a request to its local queue, and broadcasts a `REQUEST` message to all neighbors.
+2. **Processing:** Upon receiving a request, neighbors update their clocks and add the request to their queues. They send a `REPLY` back.
+3. **Entering:** A node enters the CS when:
+* Its own request is at the head of the priority queue.
+* It has received a message (REQUEST, REPLY, or RELEASE) from every other node with a timestamp larger than its request.
+
+
+4. **Releasing:** Upon exiting, the node removes its request and broadcasts `RELEASE`.
+
+### Failure Handling
+
+* **Kill:** Simulates a crash by setting an internal flag (`isDead`). The node stops responding to RMI calls.
+* **Detection:** The `detectDeadNodes()` method pings all known neighbors. If a neighbor times out, it is removed from the local topology and a `notifyNodeDead` message is broadcast to others.
+
+## Logging
+
+Logs are written to both the console (standard output) and file:
+
+* `node_<id>.log`
+
+Example Log Output:
+
+```text
+[HH:mm:ss.SSS][LC=5][Node 1706894745] === REQUESTING CRITICAL SECTION (My Timestamp: 5) ===
+[HH:mm:ss.SSS][LC=6][Node 1706894745] Received REPLY from 1706894776 (ts=6)
+[HH:mm:ss.SSS][LC=6][Node 1706894745] >>> ENTERED CRITICAL SECTION <<<
+[HH:mm:ss.SSS][LC=7][Node 1706894745] Writing Shared Variable: 555
+[HH:mm:ss.SSS][LC=8][Node 1706894745] >>> LEFT CRITICAL SECTION <<<
+
+```
+
+```
+
+```
