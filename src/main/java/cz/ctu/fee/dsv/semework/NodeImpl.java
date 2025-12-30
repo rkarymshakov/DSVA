@@ -3,6 +3,8 @@ package cz.ctu.fee.dsv.semework;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -360,6 +362,34 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             }
         }
         return currentTopology;
+    }
+
+    public void joinNetwork(String ip, int port) throws RemoteException {
+        try {
+            // 1. Get reference to the remote node (the entry point to the network)
+            Registry registry = LocateRegistry.getRegistry(ip, port);
+            Node networkNode = (Node) registry.lookup(String.valueOf(port));
+
+            log("Attempting to join network via " + ip + ":" + port);
+
+            // 2. Ask the remote node to let US join
+            // networkNode.join(...) returns the current topology of the network
+            Map<Long, Node> networkTopology = networkNode.join(this.nodeId, this);
+
+            // 3. Update our local node with the returned topology
+            for (Map.Entry<Long, Node> entry : networkTopology.entrySet()) {
+                // Don't add ourselves (we are already implicitly 'here')
+                if (entry.getKey() != this.nodeId) {
+                    this.addNode(entry.getKey(), entry.getValue());
+                }
+            }
+
+            log("Successfully joined network. Known nodes: " + knownNodes.keySet());
+
+        } catch (Exception e) {
+            log("Failed to join network: " + e.getMessage());
+            throw new RemoteException("Join network failed", e);
+        }
     }
 
     @Override

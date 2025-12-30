@@ -29,26 +29,12 @@ public class APIHandler {
             String ip = ctx.pathParam("ip");
             int targetPort = Integer.parseInt(ctx.pathParam("port"));
 
+            System.out.println("Joining node via: " + ip + ":" + targetPort);
+
             try {
-                // 1. Get reference to the remote node (the entry point to the network)
-                Registry registry = LocateRegistry.getRegistry(ip, targetPort);
-                Node networkNode = (Node) registry.lookup(String.valueOf(targetPort));
-
-
-                long myId = node.getNodeId();
-                Map<Long, Node> networkTopology = networkNode.join(myId, node);
-
-                // Update our local node with the returned topology
-                for (Map.Entry<Long, Node> entry : networkTopology.entrySet()) {
-                    // Don't add ourselves
-                    if (entry.getKey() != myId) {
-                        node.addNode(entry.getKey(), entry.getValue());
-                    }
-                }
-
-                ctx.result("Joined network via " + ip + ":" + targetPort);
+                node.joinNetwork(ip, targetPort);
+                ctx.result("Joined network via " + ip + ":" + targetPort + "\n");
             } catch (Exception e) {
-                e.printStackTrace(); // Good for debugging in tmux logs
                 ctx.status(500).result("Join failed: " + e.getMessage());
             }
         });
