@@ -209,7 +209,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             }
         }
 
-        checkQueueState();
+        notifyAll();
     }
 
     @Override
@@ -222,7 +222,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         log("Received REPLY from " + replyingNodeId + " (ts=" + timestamp + ")");
 
-        checkQueueState();
+        notifyAll();
     }
 
     @Override
@@ -239,7 +239,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             requestQueue.removeIf(r -> r.nodeId == releasingNodeId);
         }
 
-        checkQueueState();
+        notifyAll();
     }
 
     @Override
@@ -264,10 +264,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         });
 
         log(">>> LEFT CRITICAL SECTION <<<");
-    }
-
-    private synchronized void checkQueueState() {
-        notifyAll();
     }
 
     // === SHARED VARIABLE & TOPOLOGY ===
@@ -323,7 +319,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         log("Removed node " + nodeId + " from topology (Total nodes: " + knownNodes.size() + ")");
 
-        checkQueueState();
+        notifyAll();
     }
 
     @Override
@@ -366,19 +362,14 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     public void joinNetwork(String ip, int port) throws RemoteException {
         try {
-            // 1. Get reference to the remote node (the entry point to the network)
             Registry registry = LocateRegistry.getRegistry(ip, port);
             Node networkNode = (Node) registry.lookup(String.valueOf(port));
 
             log("Attempting to join network via " + ip + ":" + port);
 
-            // 2. Ask the remote node to let US join
-            // networkNode.join(...) returns the current topology of the network
             Map<Long, Node> networkTopology = networkNode.join(this.nodeId, this);
 
-            // 3. Update our local node with the returned topology
             for (Map.Entry<Long, Node> entry : networkTopology.entrySet()) {
-                // Don't add ourselves (we are already implicitly 'here')
                 if (entry.getKey() != this.nodeId) {
                     this.addNode(entry.getKey(), entry.getValue());
                 }
