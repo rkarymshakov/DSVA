@@ -138,8 +138,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     private synchronized boolean canEnterCS() {
-        if (!wantCS) return false;
-        if (isDead) return false;
+        if (!wantCS || isDead) return false;
 
         synchronized (requestQueue) {
             if (requestQueue.isEmpty() || requestQueue.peek().nodeId != nodeId)
@@ -352,16 +351,18 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void leave() throws RemoteException {
         if (knownNodes.isEmpty()) return;
-
         log("LEAVE: Leaving network...");
-        for (Node node : knownNodes.values()) {
+
+        List<Node> nodesToNotify = new ArrayList<>(knownNodes.values());
+        knownNodes.clear();
+        synchronized (requestQueue) { requestQueue.clear(); }
+        repliesReceivedForMyRequest.clear();
+
+        for (Node node : nodesToNotify) {
             try {
                 node.removeNode(this.nodeId);
             } catch (RemoteException e) { }
         }
-        knownNodes.clear();
-        requestQueue.clear();
-        repliesReceivedForMyRequest.clear();
         log("LEAVE: Complete.");
     }
 
