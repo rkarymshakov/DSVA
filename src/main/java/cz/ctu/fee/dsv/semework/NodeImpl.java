@@ -24,6 +24,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     // Lamport specific: Track the latest timestamp received from each neighbor
     private final Map<Long, Integer> latestKnownTimestamps;
 
+    private final Set<Long> repliesReceivedForMyRequest = new HashSet<>();
     private int sharedVariable;
     private boolean inCriticalSection;
     private int messageDelayMs;
@@ -143,6 +144,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             log("  Added self to queue: " + requestQueue);
         }
 
+        repliesReceivedForMyRequest.clear();
+
         broadcast((id, node) -> {
             log("  -> Sending REQUEST to node " + id);
             node.requestCS(nodeId, myRequestTimestamp);
@@ -170,19 +173,11 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         if (!wantCS) return false;
         if (isDead) return false;
 
-        Request first = requestQueue.peek();
-        if (first == null || first.nodeId != nodeId) {
+        if (requestQueue.isEmpty() || requestQueue.peek().nodeId != nodeId) {
             return false;
         }
 
-        for (Long neighborId : knownNodes.keySet()) {
-            Integer lastTs = latestKnownTimestamps.get(neighborId);
-            if (lastTs == null || lastTs <= myRequestTimestamp) {
-                return false;
-            }
-        }
-
-        return true;
+        return repliesReceivedForMyRequest.size() == knownNodes.size();
     }
 
     @Override
@@ -218,6 +213,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         simulateDelay();
         updateClock(timestamp);
 
+        repliesReceivedForMyRequest.add(replyingNodeId);
         latestKnownTimestamps.put(replyingNodeId, timestamp);
 
         log("Received REPLY from " + replyingNodeId + " (ts=" + timestamp + ")");
