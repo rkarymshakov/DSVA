@@ -487,7 +487,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public String getQueueStatus() throws RemoteException {
-        return requestQueue.toString();
+        synchronized (requestQueue) { return requestQueue.toString(); }
     }
 
     @Override
