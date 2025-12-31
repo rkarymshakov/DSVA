@@ -12,30 +12,18 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class NodeImpl extends UnicastRemoteObject implements Node {
-
     private final long nodeId;
     private int logicalClock;
-
     private final Map<Long, Node> knownNodes;
-
     private final Set<Long> repliesReceivedForMyRequest = new HashSet<>();
-
     private int sharedVariable;
     private boolean inCriticalSection;
     private int messageDelayMs;
-
-    // Queue sorted by timestamp, then by nodeId
     private final PriorityQueue<Request> requestQueue;
-
     private FileWriter logWriter;
-    private static final DateTimeFormatter timeFormatter =
-            DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
-
+    private static final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
     private boolean wantCS = false;
-    private int myRequestTimestamp = -1;
-
     private boolean isDead = false; // If true, node simulates a crash
-
     private static final int PING_TIMEOUT_MS = 3000;
     // Executor for handling async pings (avoids freezing the main thread)
     private final ExecutorService failureDetectionExecutor = Executors.newCachedThreadPool();
@@ -123,10 +111,10 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         incrementClock();
         wantCS = true;
-        myRequestTimestamp = logicalClock;
-        log("=== REQUESTING CRITICAL SECTION (My Timestamp: " + myRequestTimestamp + ") ===");
+        int timestamp = logicalClock;
+        log("=== REQUESTING CRITICAL SECTION (My Timestamp: " + timestamp + ") ===");
 
-        Request myReq = new Request(nodeId, myRequestTimestamp);
+        Request myReq = new Request(nodeId, timestamp);
         synchronized (requestQueue) {
             requestQueue.add(myReq);
             log(" Added self to queue: " + requestQueue);
@@ -136,7 +124,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         broadcast((id, node) -> {
             log(" -> Sending REQUEST to node " + id);
-            node.requestCS(nodeId, myRequestTimestamp);
+            node.requestCS(nodeId, timestamp);
         });
 
         waitForPermission();
