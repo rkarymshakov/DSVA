@@ -131,42 +131,39 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void enterCS() throws RemoteException {
         if (isDead) return;
 
-        incrementClock();
-        wantCS = true;
-        myRequestTimestamp = logicalClock;
-
-        log("=== REQUESTING CRITICAL SECTION (My Timestamp: " + myRequestTimestamp + ") ===");
-
-        Request myReq = new Request(nodeId, myRequestTimestamp);
-
-        synchronized (requestQueue) {
-            requestQueue.add(myReq);
-            log("  Added self to queue: " + requestQueue);
-        }
-
-        repliesReceivedForMyRequest.clear();
-
-        broadcast((id, node) -> {
-            log("  -> Sending REQUEST to node " + id);
-            node.requestCS(nodeId, myRequestTimestamp);
-        });
-
-        waitForPermission();
-
-        synchronized (this) {
-            inCriticalSection = true;
-            log(">>> ENTERED CRITICAL SECTION <<<");
-        }
-    }
-
-    private synchronized void waitForPermission() {
-        while (!canEnterCS()) {
+        new Thread(() -> {
             try {
-                wait();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                incrementClock();
+                wantCS = true;
+                myRequestTimestamp = logicalClock;
+                log("=== REQUESTING CRITICAL SECTION (My Timestamp: " + myRequestTimestamp + ") ===");
+
+                Request myReq = new Request(nodeId, myRequestTimestamp);
+                synchronized (requestQueue) {
+                    requestQueue.add(myReq);
+                }
+                repliesReceivedForMyRequest.clear();
+
+                broadcast((id, node) -> {
+                    log(" -> Sending REQUEST to node " + id);
+                    node.requestCS(nodeId, myRequestTimestamp);
+                });
+
+                synchronized (NodeImpl.this) {
+                    while (!canEnterCS()) {
+                        try {
+                            NodeImpl.this.wait();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                    inCriticalSection = true;
+                    log(">>> ENTERED CRITICAL SECTION <<<");
+                }
+            } catch (Exception e) {
+                log("Error during async CS entry: " + e.getMessage());
             }
-        }
+        }).start();
     }
 
     private synchronized boolean canEnterCS() {
