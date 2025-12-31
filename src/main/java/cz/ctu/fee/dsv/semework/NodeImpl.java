@@ -103,10 +103,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         incrementClock();
         wantCS = true;
-        int timestamp = logicalClock;
-        log("=== REQUESTING CRITICAL SECTION (My Timestamp: " + timestamp + ") ===");
+        log("=== REQUESTING CRITICAL SECTION (My Timestamp: " + logicalClock + ") ===");
 
-        Request myReq = new Request(nodeId, timestamp);
+        Request myReq = new Request(nodeId, logicalClock);
         synchronized (requestQueue) {
             requestQueue.add(myReq);
             log(" Added self to queue: " + requestQueue);
@@ -116,7 +115,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         broadcast((id, node) -> {
             log(" -> Sending REQUEST to node " + id);
-            node.requestCS(nodeId, timestamp);
+            node.requestCS(nodeId, logicalClock);
         });
 
         waitForPermission();
