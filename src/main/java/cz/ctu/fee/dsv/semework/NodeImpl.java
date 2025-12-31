@@ -234,7 +234,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         synchronized (requestQueue) {
             requestQueue.removeIf(r -> r.nodeId == releasingNodeId);
         }
-        repliesReceivedForMyRequest.clear();
 
         notifyAll();
     }
@@ -260,6 +259,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             node.releaseCS(nodeId, logicalClock);
         });
 
+        repliesReceivedForMyRequest.clear();
         log(">>> LEFT CRITICAL SECTION <<<");
     }
 
