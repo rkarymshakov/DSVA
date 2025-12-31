@@ -203,7 +203,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             }
         }
 
-        checkQueueState();
+        synchronized (this) { notifyAll(); }
     }
 
     @Override
@@ -217,7 +217,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         log("Received REPLY from " + replyingNodeId + " (ts=" + timestamp + ")");
 
-        checkQueueState();
+        synchronized (this) { notifyAll(); }
     }
 
     @Override
@@ -234,7 +234,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             requestQueue.removeIf(r -> r.nodeId == releasingNodeId);
         }
 
-        checkQueueState();
+        synchronized (this) { notifyAll(); }
     }
 
     @Override
@@ -260,10 +260,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         repliesReceivedForMyRequest.clear();
         log(">>> LEFT CRITICAL SECTION <<<");
-    }
-
-    private synchronized void checkQueueState() {
-        notifyAll();
     }
 
     // === SHARED VARIABLE & TOPOLOGY ===
@@ -320,7 +316,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         log("Removed node " + nodeId + " from topology (Total nodes: " + knownNodes.size() + ")");
 
-        checkQueueState();
+        synchronized (this) { notifyAll(); }
     }
 
     @Override
