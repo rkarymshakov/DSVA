@@ -18,9 +18,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     private final Map<Long, Node> knownNodes;
 
-    // Lamport specific: Track the latest timestamp received from each neighbor
-    private final Map<Long, Integer> latestKnownTimestamps;
-
     private final Set<Long> repliesReceivedForMyRequest = new HashSet<>();
 
     private int sharedVariable;
@@ -48,7 +45,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         this.nodeId = nodeId;
         this.logicalClock = 0;
         this.knownNodes = new ConcurrentHashMap<>();
-        this.latestKnownTimestamps = new ConcurrentHashMap<>();
         this.sharedVariable = 0;
         this.inCriticalSection = false;
         this.messageDelayMs = 0;
@@ -99,11 +95,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
                 this.knownNodes.putAll(freshTopology);
                 this.knownNodes.remove(this.nodeId);
-
-                this.latestKnownTimestamps.clear();
-                for (Long id : knownNodes.keySet()) {
-                    latestKnownTimestamps.put(id, 0);
-                }
 
                 log("Revive successful! Reconnected via neighbor.");
                 return;
@@ -185,8 +176,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         simulateDelay();
         updateClock(timestamp);
 
-        latestKnownTimestamps.put(requestingNodeId, timestamp);
-
         log("Received REQUEST from " + requestingNodeId + " (ts=" + timestamp + ")");
 
         synchronized (requestQueue) {
@@ -213,7 +202,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         updateClock(timestamp);
 
         repliesReceivedForMyRequest.add(replyingNodeId);
-        latestKnownTimestamps.put(replyingNodeId, timestamp);
 
         log("Received REPLY from " + replyingNodeId + " (ts=" + timestamp + ")");
 
@@ -225,8 +213,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         ensureAlive();
         simulateDelay();
         updateClock(timestamp);
-
-        latestKnownTimestamps.put(releasingNodeId, timestamp);
 
         log("Received RELEASE from " + releasingNodeId + " (ts=" + timestamp + ")");
 
@@ -297,14 +283,12 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         ensureAlive();
         incrementClock();
         knownNodes.put(otherNodeId, nodeRef);
-        latestKnownTimestamps.put(otherNodeId, 0);
         log("Added node " + otherNodeId + " (Total: " + knownNodes.size() + ")");
     }
 
     @Override
     public void removeNode(long nodeId) throws RemoteException {
         knownNodes.remove(nodeId);
-        latestKnownTimestamps.remove(nodeId);
         repliesReceivedForMyRequest.remove(nodeId);
 
         synchronized (requestQueue) {
@@ -401,7 +385,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             } catch (RemoteException e) { }
         }
         knownNodes.clear();
-        latestKnownTimestamps.clear();
         requestQueue.clear();
         repliesReceivedForMyRequest.clear();
         log("LEAVE: Complete.");
