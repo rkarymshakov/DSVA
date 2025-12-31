@@ -11,9 +11,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
 
-/**
- * Implementation of Node interface with correct Lamport mutual exclusion and required failure simulation.
- */
 public class NodeImpl extends UnicastRemoteObject implements Node {
 
     private final long nodeId;
@@ -173,12 +170,12 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         if (!wantCS) return false;
         if (isDead) return false;
 
-        Request first = requestQueue.peek();
-        if (first == null || first.nodeId != nodeId) {
-            return false;
+        synchronized (requestQueue) {
+            if (requestQueue.isEmpty() || requestQueue.peek().nodeId != nodeId) {
+                return false;
+            }
         }
 
-        // Check if we received replies from ALL neighbors
         return repliesReceivedForMyRequest.size() == knownNodes.size();
     }
 
