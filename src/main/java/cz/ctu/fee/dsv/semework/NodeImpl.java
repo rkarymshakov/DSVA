@@ -25,6 +25,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private final Map<Long, Integer> latestKnownTimestamps;
 
     private final Set<Long> repliesReceivedForMyRequest = new HashSet<>();
+
     private int sharedVariable;
     private boolean inCriticalSection;
     private int messageDelayMs;
@@ -90,6 +91,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         synchronized (requestQueue) {
             this.requestQueue.clear();
         }
+        repliesReceivedForMyRequest.clear();
 
         List<Node> potentialNeighbors = new ArrayList<>(knownNodes.values());
         this.knownNodes.clear();
@@ -131,49 +133,52 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void enterCS() throws RemoteException {
         if (isDead) return;
 
-        new Thread(() -> {
+        incrementClock();
+        wantCS = true;
+        myRequestTimestamp = logicalClock;
+        log("=== REQUESTING CRITICAL SECTION (My Timestamp: " + myRequestTimestamp + ") ===");
+
+        Request myReq = new Request(nodeId, myRequestTimestamp);
+        synchronized (requestQueue) {
+            requestQueue.add(myReq);
+            log(" Added self to queue: " + requestQueue);
+        }
+
+        repliesReceivedForMyRequest.clear();
+
+        broadcast((id, node) -> {
+            log(" -> Sending REQUEST to node " + id);
+            node.requestCS(nodeId, myRequestTimestamp);
+        });
+
+        waitForPermission();
+
+        synchronized (this) {
+            inCriticalSection = true;
+            log(">>> ENTERED CRITICAL SECTION <<<");
+        }
+    }
+
+    private synchronized void waitForPermission() {
+        while (!canEnterCS()) {
             try {
-                incrementClock();
-                wantCS = true;
-                myRequestTimestamp = logicalClock;
-                log("=== REQUESTING CRITICAL SECTION (My Timestamp: " + myRequestTimestamp + ") ===");
-
-                Request myReq = new Request(nodeId, myRequestTimestamp);
-                synchronized (requestQueue) {
-                    requestQueue.add(myReq);
-                }
-                repliesReceivedForMyRequest.clear();
-
-                broadcast((id, node) -> {
-                    log(" -> Sending REQUEST to node " + id);
-                    node.requestCS(nodeId, myRequestTimestamp);
-                });
-
-                synchronized (NodeImpl.this) {
-                    while (!canEnterCS()) {
-                        try {
-                            NodeImpl.this.wait();
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        }
-                    }
-                    inCriticalSection = true;
-                    log(">>> ENTERED CRITICAL SECTION <<<");
-                }
-            } catch (Exception e) {
-                log("Error during async CS entry: " + e.getMessage());
+                wait();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-        }).start();
+        }
     }
 
     private synchronized boolean canEnterCS() {
         if (!wantCS) return false;
         if (isDead) return false;
 
-        if (requestQueue.isEmpty() || requestQueue.peek().nodeId != nodeId) {
+        Request first = requestQueue.peek();
+        if (first == null || first.nodeId != nodeId) {
             return false;
         }
 
+        // Check if we received replies from ALL neighbors
         return repliesReceivedForMyRequest.size() == knownNodes.size();
     }
 
@@ -201,7 +206,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             }
         }
 
-        notifyAll();
+        checkQueueState();
     }
 
     @Override
@@ -215,7 +220,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         log("Received REPLY from " + replyingNodeId + " (ts=" + timestamp + ")");
 
-        notifyAll();
+        checkQueueState();
     }
 
     @Override
@@ -232,7 +237,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             requestQueue.removeIf(r -> r.nodeId == releasingNodeId);
         }
 
-        notifyAll();
+        checkQueueState();
     }
 
     @Override
@@ -258,6 +263,10 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         repliesReceivedForMyRequest.clear();
         log(">>> LEFT CRITICAL SECTION <<<");
+    }
+
+    private synchronized void checkQueueState() {
+        notifyAll();
     }
 
     // === SHARED VARIABLE & TOPOLOGY ===
@@ -303,6 +312,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void removeNode(long nodeId) throws RemoteException {
         knownNodes.remove(nodeId);
         latestKnownTimestamps.remove(nodeId);
+        repliesReceivedForMyRequest.remove(nodeId);
 
         synchronized (requestQueue) {
             boolean removed = requestQueue.removeIf(r -> r.nodeId == nodeId);
@@ -313,7 +323,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         log("Removed node " + nodeId + " from topology (Total nodes: " + knownNodes.size() + ")");
 
-        notifyAll();
+        checkQueueState();
     }
 
     @Override
@@ -400,6 +410,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         knownNodes.clear();
         latestKnownTimestamps.clear();
         requestQueue.clear();
+        repliesReceivedForMyRequest.clear();
         log("LEAVE: Complete.");
     }
 
