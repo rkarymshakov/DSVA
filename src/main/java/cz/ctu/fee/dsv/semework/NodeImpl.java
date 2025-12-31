@@ -234,6 +234,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         synchronized (requestQueue) {
             requestQueue.removeIf(r -> r.nodeId == releasingNodeId);
         }
+        repliesReceivedForMyRequest.clear();
 
         notifyAll();
     }
