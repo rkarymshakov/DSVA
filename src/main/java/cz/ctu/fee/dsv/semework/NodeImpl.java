@@ -44,7 +44,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             System.err.println("Failed to create log file: " + e.getMessage());
             this.logWriter = null;
         }
-
         log("Node created with ID: " + nodeId);
     }
 
@@ -52,8 +51,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         String idStr = ip + ":" + port;
         return Math.abs(idStr.hashCode());
     }
-
-    // === FAILURE SIMULATION ===
 
     @Override
     public void kill() throws RemoteException {
@@ -69,9 +66,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         this.inCriticalSection = false;
         this.wantCS = false;
         this.logicalClock = 0;
-        synchronized (requestQueue) {
-            this.requestQueue.clear();
-        }
+        synchronized (requestQueue) { this.requestQueue.clear(); }
         repliesReceivedForMyRequest.clear();
 
         List<Node> potentialNeighbors = new ArrayList<>(knownNodes.values());
@@ -86,7 +81,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
                 log("Revive successful! Reconnected via neighbor.");
                 return;
-
             } catch (RemoteException e) { }
         }
 
@@ -102,8 +96,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             throw new RemoteException("Node is dead");
         }
     }
-
-    // === LAMPORT'S MUTUAL EXCLUSION ALGORITHM ===
 
     @Override
     public void enterCS() throws RemoteException {
@@ -150,9 +142,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         if (isDead) return false;
 
         synchronized (requestQueue) {
-            if (requestQueue.isEmpty() || requestQueue.peek().nodeId != nodeId) {
+            if (requestQueue.isEmpty() || requestQueue.peek().nodeId != nodeId)
                 return false;
-            }
         }
 
         return repliesReceivedForMyRequest.size() == knownNodes.size();
@@ -228,15 +219,11 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             requestQueue.removeIf(r -> r.nodeId == nodeId);
         }
 
-        broadcast((id, node) -> {
-            node.releaseCS(nodeId, logicalClock);
-        });
+        broadcast((id, node) -> node.releaseCS(nodeId, logicalClock));
 
         repliesReceivedForMyRequest.clear();
         log(">>> LEFT CRITICAL SECTION <<<");
     }
-
-    // === SHARED VARIABLE & TOPOLOGY ===
 
     @Override
     public synchronized void setSharedVariable(int value) throws RemoteException {
@@ -378,8 +365,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         log("LEAVE: Complete.");
     }
 
-    // === FAILURE DETECTION & HELPERS ===
-
     @Override
     public void detectDeadNodes() throws RemoteException {
         ensureAlive();
@@ -438,8 +423,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         log("Received notification: Node " + deadNodeId + " is dead/gone.");
         removeNode(deadNodeId);
     }
-
-    // === UTILS ===
 
     private synchronized void incrementClock() {
         logicalClock++;
