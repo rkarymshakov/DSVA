@@ -125,10 +125,35 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
                 if (entry.getKey() != this.nodeId)
                     this.addNode(entry.getKey(), entry.getValue());
 
+            processSyncedQueue();
             logger.logInfo("Successfully joined network. Known nodes: " + knownNodes.keySet(), logicalClock);
         } catch (Exception e) {
             logger.logError("Failed to join network: " + e.getMessage(), logicalClock);
             throw new RemoteException("Join network failed", e);
+        }
+    }
+
+    private void processSyncedQueue() {
+        List<Request> snapshot;
+        synchronized (requestQueue) {
+            snapshot = new ArrayList<>(requestQueue);
+        }
+        if (snapshot.isEmpty()) return;
+
+        logger.logInfo("Processing synced queue (size " + snapshot.size() + ") to unblock waiting nodes...", logicalClock);
+
+        for (Request req : snapshot) {
+            if (req.nodeId == this.nodeId) continue;
+
+            Node waitingNode = knownNodes.get(req.nodeId);
+            if (waitingNode != null) {
+                try {
+                    logger.logInfo("  -> Sending Initial REPLY to " + req.nodeId + " (found in synced queue)", logicalClock);
+                    waitingNode.replyCS(this.nodeId, this.logicalClock);
+                } catch (RemoteException e) {
+                    logger.logError("  Failed to send initial reply to " + req.nodeId, logicalClock);
+                }
+            }
         }
     }
 
@@ -138,25 +163,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         incrementClock();
         knownNodes.put(otherNodeId, nodeRef);
         logger.logInfo("Added node " + otherNodeId + " (Total: " + knownNodes.size() + ")", logicalClock);
-
-        if (wantCS && !inCriticalSection) {
-            Request myPendingRequest = null;
-            synchronized (requestQueue) {
-                for (Request r : requestQueue)
-                    if (r.nodeId == this.nodeId) {
-                        myPendingRequest = r;
-                        break;
-                    }
-            }
-            if (myPendingRequest != null) {
-                try {
-                    logger.logInfo("  -> Re-sending REQUEST to new node " + otherNodeId + " (deadlock prevention)", logicalClock);
-                    nodeRef.requestCS(this.nodeId, myPendingRequest.timestamp);
-                } catch (RemoteException e) {
-                    logger.logError("  Failed to send request to new node " + otherNodeId, logicalClock);
-                }
-            }
-        }
     }
 
     @Override
