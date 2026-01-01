@@ -46,7 +46,6 @@ public class ConsoleHandler implements Runnable {
                         break;
                     }
                     currentNode.joinNetwork((parts[1]), Integer.parseInt(parts[2]));
-//                    addNode(parts[1], Integer.parseInt(parts[2]));
                     break;
                 case "leave":
                     currentNode.leave();
@@ -96,7 +95,6 @@ public class ConsoleHandler implements Runnable {
                     printHelp();
                     break;
                 case "exit":
-                    out.println("Goodbye!");
                     reading = false;
                     System.exit(0);
                     break;
@@ -118,19 +116,6 @@ public class ConsoleHandler implements Runnable {
 //            currentNode = null;
 //        }
 //    }
-
-    private void addNode(String hostname, int port) {
-        try {
-            Registry registry = LocateRegistry.getRegistry(hostname, port);
-            Node networkNode = (Node) registry.lookup(String.valueOf(port));
-
-            java.util.Map<Long, Node> existingNodes = networkNode.join(currentNode.getNodeId(), currentNode);
-            for (java.util.Map.Entry<Long, Node> entry : existingNodes.entrySet()) {
-                currentNode.addNode(entry.getKey(), entry.getValue());
-            }
-
-        } catch (Exception e) { err.println("Failed to add node: " + e.getMessage()); }
-    }
 
     private void showStatus() {
         try {
