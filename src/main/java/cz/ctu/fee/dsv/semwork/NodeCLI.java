@@ -1,4 +1,4 @@
-package cz.ctu.fee.dsv.semework;
+package cz.ctu.fee.dsv.semwork;
 
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;

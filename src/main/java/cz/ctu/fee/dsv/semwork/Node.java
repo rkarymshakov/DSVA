@@ -1,4 +1,4 @@
-package cz.ctu.fee.dsv.semework;
+package cz.ctu.fee.dsv.semwork;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
