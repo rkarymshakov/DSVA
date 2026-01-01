@@ -68,7 +68,7 @@ public class ConsoleHandler implements Runnable {
                     showClock();
                     break;
                 case "kill":
-                    killNode();
+                    myNode.kill();
                     break;
                 case "revive":
                     reviveNode();
@@ -124,7 +124,6 @@ public class ConsoleHandler implements Runnable {
 
     private void connect(String hostname, int port) {
         try {
-            out.println("Connecting to " + hostname + ":" + port);
             Registry registry = LocateRegistry.getRegistry(hostname, port);
             currentNode = (Node) registry.lookup(String.valueOf(port));
             currentNodeId = currentNode.getNodeId();
@@ -141,9 +140,7 @@ public class ConsoleHandler implements Runnable {
         try {
             Registry registry = LocateRegistry.getRegistry(hostname, port);
             Node networkNode = (Node) registry.lookup(String.valueOf(port));
-            long networkNodeId = networkNode.getNodeId();
 
-            out.println("Joining network. Current node: " + currentNodeId + ", Network node: " + networkNodeId);
             if (!currentNode.getKnownNodes().isEmpty()) {
                 out.println("ERROR: Current node already has connections. Must be isolated to join network.");
                 return;
@@ -164,7 +161,6 @@ public class ConsoleHandler implements Runnable {
             java.util.List<Long> topologyBefore = currentNode.getKnownNodes();
             if (topologyBefore.isEmpty()) { out.println("Node " + currentNodeId + " is isolated."); return; }
 
-            out.println("Leaving network. Node: " + currentNodeId);
             currentNode.leave();
             java.util.List<Long> topologyAfter = currentNode.getKnownNodes();
             out.println("Leave complete. Remaining connections: " + topologyAfter.size());
@@ -210,7 +206,6 @@ public class ConsoleHandler implements Runnable {
         if (currentNode == null) { out.println("Not connected."); return; }
         try {
             currentNode.setSharedVariable(value);
-            out.println("Shared Variable set to " + value);
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
@@ -218,14 +213,12 @@ public class ConsoleHandler implements Runnable {
         if (currentNode == null) { out.println("Not connected."); return; }
         try {
             currentNode.setMessageDelayMs(delayMs);
-            out.println("Message delay set to " + delayMs + "ms");
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
     private void detectDeadNodes() {
         if (currentNode == null) { out.println("Not connected."); return; }
         try {
-            out.println("Starting failure detection...");
             currentNode.detectDeadNodes();
             out.println("Failure detection complete. Check node logs for details.");
         } catch (Exception e) { err.println("Detection failed: " + e.getMessage()); }
@@ -237,7 +230,6 @@ public class ConsoleHandler implements Runnable {
         new Thread(() -> {
             try {
                 currentNode.enterCS();
-                out.println("CRITICAL SECTION ENTERED");
                 out.print(getPrompt());
             } catch (Exception e) {
                 err.println("CRITICAL SECTION REQUEST FAILED: " + e.getMessage());
@@ -250,7 +242,6 @@ public class ConsoleHandler implements Runnable {
         if (currentNode == null) { out.println("Not connected."); return; }
         try {
             currentNode.leaveCS();
-            out.println("Critical section released");
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
@@ -264,18 +255,14 @@ public class ConsoleHandler implements Runnable {
     private void killNode() {
         if (currentNode == null) { out.println("Not connected to any node."); return; }
         try {
-            out.println("KILLING NODE " + currentNodeId);
             currentNode.kill();
-            out.println("Node is now 'dead'");
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
     private void reviveNode() {
         if (currentNode == null) { out.println("Not connected to any node."); return; }
         try {
-            out.println("REVIVING NODE " + currentNodeId);
             currentNode.revive();
-            out.println("Node is back online");
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
@@ -303,7 +290,6 @@ public class ConsoleHandler implements Runnable {
     @Override
     public void run() {
         String commandline = "";
-        out.println("Interactive Node CLI");
         printHelp();
 
         while (reading == true) {
