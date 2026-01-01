@@ -14,7 +14,7 @@ public class ConsoleHandler implements Runnable {
     private PrintStream out = System.out;
     private PrintStream err = System.err;
     private NodeImpl myNode;
-    private Node currentNode = null;
+    private Node currentNode;
     private long currentNodeId = -1;
 
     public ConsoleHandler(NodeImpl myNode) {
@@ -68,10 +68,10 @@ public class ConsoleHandler implements Runnable {
                     showClock();
                     break;
                 case "kill":
-                    myNode.kill();
+                    currentNode.kill();
                     break;
                 case "revive":
-                    reviveNode();
+                    currentNode.revive();
                     break;
                 case "getvar":
                     getVariable();
@@ -249,13 +249,6 @@ public class ConsoleHandler implements Runnable {
         if (currentNode == null) { out.println("Not connected."); return; }
         try {
             out.println("Request Queue: " + currentNode.getQueueStatus());
-        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
-    }
-
-    private void killNode() {
-        if (currentNode == null) { out.println("Not connected to any node."); return; }
-        try {
-            currentNode.kill();
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
