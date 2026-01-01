@@ -33,13 +33,13 @@ public class ConsoleHandler implements Runnable {
 
         try {
             switch (command) {
-//                case "connect":
-//                    if (parts.length < 3) {
-//                        out.println("Usage: connect <hostname> <port>");
-//                        break;
-//                    }
-//                    connect(parts[1], Integer.parseInt(parts[2]));
-//                    break;
+                case "connect":
+                    if (parts.length < 3) {
+                        out.println("Usage: connect <hostname> <port>");
+                        break;
+                    }
+                    connect(parts[1], Integer.parseInt(parts[2]));
+                    break;
                 case "addnode":
                     if (parts.length < 3) {
                         out.println("Usage: addnode <hostname> <port>");
@@ -55,9 +55,6 @@ public class ConsoleHandler implements Runnable {
                     break;
                 case "status":
                     showStatus();
-                    break;
-                case "clock":
-                    currentNode.getLogicalClock();
                     break;
                 case "kill":
                     currentNode.kill();
@@ -106,16 +103,16 @@ public class ConsoleHandler implements Runnable {
         }
     }
 
-//    private void connect(String hostname, int port) {
-//        try {
-//            Registry registry = LocateRegistry.getRegistry(hostname, port);
-//            currentNode = (Node) registry.lookup(String.valueOf(port));
-//            out.println("Connected to node ID: " + currentNode.getNodeId());
-//        } catch (Exception e) {
-//            err.println("Connection failed: " + e.getMessage());
-//            currentNode = null;
-//        }
-//    }
+    private void connect(String hostname, int port) {
+        try {
+            Registry registry = LocateRegistry.getRegistry(hostname, port);
+            currentNode = (NodeImpl) registry.lookup(String.valueOf(port));
+            out.println("Connected to node ID: " + currentNode.getNodeId());
+        } catch (Exception e) {
+            err.println("Connection failed: " + e.getMessage());
+            currentNode = null;
+        }
+    }
 
     private void showStatus() {
         try {
