@@ -1,5 +1,6 @@
 package cz.ctu.fee.dsv.semework;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -9,6 +10,7 @@ import java.util.Objects;
  */
 public class Request implements Serializable, Comparable<Request> {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     public final long nodeId;
@@ -21,12 +23,9 @@ public class Request implements Serializable, Comparable<Request> {
 
     @Override
     public int compareTo(Request other) {
-        // Primary sort: Timestamp (Logical Clock)
-        if (this.timestamp != other.timestamp) {
-            return Integer.compare(this.timestamp, other.timestamp);
-        }
-        // Secondary sort: Node ID (Tie-breaker for concurrent requests)
-        return Long.compare(this.nodeId, other.nodeId);
+        if (this.timestamp != other.timestamp) // Primary sort: Timestamp (Logical Clock)
+            return Integer.compare(this.timestamp, other.timestamp); // Earlier timestamp has higher priority
+        return Long.compare(this.nodeId, other.nodeId); // Secondary sort: Lower node ID has higher priority
     }
 
     @Override
