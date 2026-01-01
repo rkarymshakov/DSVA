@@ -27,10 +27,8 @@ public class ConsoleHandler implements Runnable {
         try {
             switch (command) {
                 case "addnode":
-                    if (parts.length < 3) {
-                        out.println("Usage: addnode <hostname> <port>");
+                    if (parts.length < 3)
                         break;
-                    }
                     currentNode.joinNetwork((parts[1]), Integer.parseInt(parts[2]));
                     break;
                 case "leave":
@@ -52,17 +50,13 @@ public class ConsoleHandler implements Runnable {
                     currentNode.getSharedVariable();
                     break;
                 case "setvar":
-                    if (parts.length < 2) {
-                        out.println("Usage: setvar <value>");
+                    if (parts.length < 2)
                         break;
-                    }
                     currentNode.setSharedVariable(Integer.parseInt(parts[1]));
                     break;
                 case "delay":
-                    if (parts.length < 2) {
-                        out.println("Usage: delay <milliseconds>");
+                    if (parts.length < 2)
                         break;
-                    }
                     currentNode.setMessageDelayMs(Integer.parseInt(parts[1]));
                     break;
                 case "detect":
