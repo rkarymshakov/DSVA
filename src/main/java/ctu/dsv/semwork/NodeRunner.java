@@ -5,7 +5,6 @@ import java.rmi.registry.Registry;
 import java.net.InetAddress;
 
 public class NodeRunner {
-
     public static void main(String[] args) {
         int rmiPort = 2010;
 
@@ -27,14 +26,11 @@ public class NodeRunner {
             System.out.println("Starting Node ID: " + nodeId);
             NodeImpl nodeImpl = new NodeImpl(nodeId);
 
-            // Start REST API
             APIHandler apiHandler = new APIHandler(nodeImpl, restPort);
             apiHandler.start();
 
-            // *** START INTEGRATED CLI ***
             ConsoleHandler consoleHandler = new ConsoleHandler(nodeImpl);
-            Thread consoleThread = new Thread(consoleHandler, "ConsoleHandler");
-            consoleThread.setDaemon(false); // Keep JVM alive
+            Thread consoleThread = new Thread(consoleHandler);
             consoleThread.start();
 
             // Shutdown Hook

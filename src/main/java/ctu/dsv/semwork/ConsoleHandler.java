@@ -3,100 +3,106 @@ package ctu.dsv.semwork;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.rmi.RemoteException;
+import java.io.PrintStream;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 public class ConsoleHandler implements Runnable {
 
     private boolean reading = true;
-    private final BufferedReader reader;
-    private final NodeImpl myNode;
+    private BufferedReader reader = null;
+    private PrintStream out = System.out;
+    private PrintStream err = System.err;
+    private NodeImpl myNode;
+    private Node currentNode = null;
+    private long currentNodeId = -1;
 
     public ConsoleHandler(NodeImpl myNode) {
         this.myNode = myNode;
-        this.reader = new BufferedReader(new InputStreamReader(System.in));
+        this.currentNode = myNode;
+        try {
+            this.currentNodeId = myNode.getNodeId();
+        } catch (Exception e) {
+            err.println("Error getting node ID: " + e.getMessage());
+        }
+        reader = new BufferedReader(new InputStreamReader(System.in));
     }
 
-    private void parseCommandLine(String commandline) {
-        String[] parts = commandline.trim().split("\\s+");
-        String cmd = parts[0].toLowerCase();
+    private String getPrompt() {
+        return currentNode == null ? "[Not Connected]> " : "[Node " + currentNodeId + "]> ";
+    }
+
+    private void parse_commandline(String commandline) {
+        if (commandline.trim().isEmpty()) return;
+
+        String[] parts = commandline.split("\\s+");
+        String command = parts[0].toLowerCase();
 
         try {
-            switch (cmd) {
-                case "status":
-                case "s":
-                    printStatus();
-                    break;
-                case "join":
+            switch (command) {
+                case "connect":
                     if (parts.length < 3) {
-                        System.out.println("Usage: join <hostname> <port>");
+                        out.println("Usage: connect <hostname> <port>");
                         break;
                     }
-                    myNode.joinNetwork(parts[1], Integer.parseInt(parts[2]));
-                    System.out.println("Joined network via " + parts[1] + ":" + parts[2]);
+                    connect(parts[1], Integer.parseInt(parts[2]));
+                    break;
+                case "addnode":
+                    if (parts.length < 3) {
+                        out.println("Usage: addnode <hostname> <port>");
+                        break;
+                    }
+                    addNode(parts[1], Integer.parseInt(parts[2]));
                     break;
                 case "leave":
-                    myNode.leave();
-                    System.out.println("Left the network");
+                    leave();
                     break;
                 case "list":
-                    System.out.println("Known nodes: " + myNode.getKnownNodes());
+                    listNodes();
                     break;
-                case "entercs":
-                case "request":
-                    System.out.println("Requesting critical section (async)...");
-                    new Thread(() -> {
-                        try {
-                            myNode.enterCS();
-                            System.out.println("\n>>> ENTERED CRITICAL SECTION <<<");
-                            System.out.print("cmd > ");
-                        } catch (Exception e) {
-                            System.err.println("Failed to enter CS: " + e.getMessage());
-                            System.out.print("cmd > ");
-                        }
-                    }).start();
+                case "status":
+                case "s":
+                    showStatus();
                     break;
-                case "leavecs":
-                case "release":
-                    myNode.leaveCS();
-                    System.out.println("Released critical section");
+                case "clock":
+                    showClock();
+                    break;
+                case "kill":
+                    killNode();
+                    break;
+                case "revive":
+                    reviveNode();
                     break;
                 case "getvar":
-                    System.out.println("Shared Variable = " + myNode.getSharedVariable());
+                    getVariable();
                     break;
                 case "setvar":
                     if (parts.length < 2) {
-                        System.out.println("Usage: setvar <value>");
+                        out.println("Usage: setvar <value>");
                         break;
                     }
-                    myNode.setSharedVariable(Integer.parseInt(parts[1]));
-                    System.out.println("Shared variable set to " + parts[1]);
+                    setVariable(Integer.parseInt(parts[1]));
                     break;
                 case "delay":
                     if (parts.length < 2) {
-                        System.out.println("Usage: delay <milliseconds>");
+                        out.println("Usage: delay <milliseconds>");
                         break;
                     }
-                    myNode.setMessageDelayMs(Integer.parseInt(parts[1]));
-                    System.out.println("Message delay set to " + parts[1] + "ms");
-                    break;
-                case "kill":
-                    myNode.kill();
-                    System.out.println("Node killed (simulated crash)");
-                    break;
-                case "revive":
-                    myNode.revive();
-                    System.out.println("Node revived");
+                    setDelay(Integer.parseInt(parts[1]));
                     break;
                 case "detect":
-                    System.out.println("Detecting dead nodes...");
-                    myNode.detectDeadNodes();
-                    System.out.println("Detection complete");
+                    detectDeadNodes();
                     break;
-                case "clock":
-                    System.out.println("Logical Clock: " + myNode.getLogicalClock());
+                case "request":
+                case "entercs":
+                    requestCS();
+                    break;
+                case "release":
+                case "leavecs":
+                    releaseCS();
                     break;
                 case "queue":
-                    System.out.println("Request Queue: " + myNode.getQueueStatus());
+                    showQueue();
                     break;
                 case "help":
                 case "?":
@@ -104,71 +110,215 @@ public class ConsoleHandler implements Runnable {
                     break;
                 case "exit":
                 case "quit":
-                    System.out.println("Shutting down...");
+                    out.println("Goodbye!");
                     reading = false;
                     System.exit(0);
                     break;
                 default:
-                    System.out.println("Unknown command: '" + cmd + "'. Type 'help' for available commands.");
+                    out.println("Unrecognized command. Type 'help' for available commands");
             }
-        } catch (RemoteException e) {
-            System.err.println("Error: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("Command failed: " + e.getMessage());
+            err.println("Error: " + e.getMessage());
         }
     }
 
-    private void printStatus() throws RemoteException {
-        System.out.println("=== Node Status ===");
-        System.out.println("Node ID:         " + myNode.getNodeId());
-        System.out.println("Logical Clock:   " + myNode.getLogicalClock());
-        System.out.println("In CS:           " + myNode.isInCriticalSection());
-        System.out.println("Shared Variable: " + myNode.getSharedVariable());
-        System.out.println("Message Delay:   " + myNode.getMessageDelayMs() + "ms");
-        System.out.println("Known Nodes:     " + myNode.getKnownNodes().size());
-        System.out.println("Request Queue:   " + myNode.getQueueStatus());
+    private void connect(String hostname, int port) {
+        try {
+            out.println("Connecting to " + hostname + ":" + port);
+            Registry registry = LocateRegistry.getRegistry(hostname, port);
+            currentNode = (Node) registry.lookup(String.valueOf(port));
+            currentNodeId = currentNode.getNodeId();
+            out.println("Connected to node ID: " + currentNodeId);
+        } catch (Exception e) {
+            err.println("Connection failed: " + e.getMessage());
+            currentNode = null;
+            currentNodeId = -1;
+        }
+    }
+
+    private void addNode(String hostname, int port) {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        try {
+            Registry registry = LocateRegistry.getRegistry(hostname, port);
+            Node networkNode = (Node) registry.lookup(String.valueOf(port));
+            long networkNodeId = networkNode.getNodeId();
+
+            out.println("Joining network. Current node: " + currentNodeId + ", Network node: " + networkNodeId);
+            if (!currentNode.getKnownNodes().isEmpty()) {
+                out.println("ERROR: Current node already has connections. Must be isolated to join network.");
+                return;
+            }
+
+            java.util.Map<Long, Node> existingNodes = networkNode.join(currentNodeId, currentNode);
+            for (java.util.Map.Entry<Long, Node> entry : existingNodes.entrySet()) {
+                currentNode.addNode(entry.getKey(), entry.getValue());
+            }
+
+            out.println("Join complete! Known nodes: " + existingNodes.size());
+        } catch (Exception e) { err.println("Failed to add node: " + e.getMessage()); }
+    }
+
+    private void leave() {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        try {
+            java.util.List<Long> topologyBefore = currentNode.getKnownNodes();
+            if (topologyBefore.isEmpty()) { out.println("Node " + currentNodeId + " is isolated."); return; }
+
+            out.println("Leaving network. Node: " + currentNodeId);
+            currentNode.leave();
+            java.util.List<Long> topologyAfter = currentNode.getKnownNodes();
+            out.println("Leave complete. Remaining connections: " + topologyAfter.size());
+        } catch (Exception e) { err.println("Failed to leave network: " + e.getMessage()); }
+    }
+
+    private void listNodes() {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        try {
+            java.util.List<Long> nodes = currentNode.getKnownNodes();
+            out.println("Known Nodes:");
+            if (nodes.isEmpty()) out.println("(none)");
+            else nodes.forEach(id -> out.println("Node ID: " + id));
+        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
+    }
+
+    private void showStatus() {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        try {
+            out.println("Node Status:");
+            out.println("Node ID: " + currentNodeId);
+            out.println("Logical Clock: " + currentNode.getLogicalClock());
+            out.println("In CS: " + currentNode.isInCriticalSection());
+            out.println("Request Queue: " + currentNode.getQueueStatus());
+            out.println("Message Delay: " + currentNode.getMessageDelayMs() + "ms");
+            out.println("Known Nodes: " + currentNode.getKnownNodes().size());
+        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
+    }
+
+    private void showClock() {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        try { out.println("Logical Clock: " + currentNode.getLogicalClock()); }
+        catch (Exception e) { err.println("Error: " + e.getMessage()); }
+    }
+
+    private void getVariable() {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        try { out.println("Shared Variable = " + currentNode.getSharedVariable()); }
+        catch (Exception e) { err.println("Error: " + e.getMessage()); }
+    }
+
+    private void setVariable(int value) {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        try {
+            currentNode.setSharedVariable(value);
+            out.println("Shared Variable set to " + value);
+        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
+    }
+
+    private void setDelay(int delayMs) {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        try {
+            currentNode.setMessageDelayMs(delayMs);
+            out.println("Message delay set to " + delayMs + "ms");
+        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
+    }
+
+    private void detectDeadNodes() {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        try {
+            out.println("Starting failure detection...");
+            currentNode.detectDeadNodes();
+            out.println("Failure detection complete. Check node logs for details.");
+        } catch (Exception e) { err.println("Detection failed: " + e.getMessage()); }
+    }
+
+    private void requestCS() {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        out.println("Requesting critical section (async)");
+        new Thread(() -> {
+            try {
+                currentNode.enterCS();
+                out.println("CRITICAL SECTION ENTERED");
+                out.print(getPrompt());
+            } catch (Exception e) {
+                err.println("CRITICAL SECTION REQUEST FAILED: " + e.getMessage());
+                out.print(getPrompt());
+            }
+        }).start();
+    }
+
+    private void releaseCS() {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        try {
+            currentNode.leaveCS();
+            out.println("Critical section released");
+        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
+    }
+
+    private void showQueue() {
+        if (currentNode == null) { out.println("Not connected."); return; }
+        try {
+            out.println("Request Queue: " + currentNode.getQueueStatus());
+        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
+    }
+
+    private void killNode() {
+        if (currentNode == null) { out.println("Not connected to any node."); return; }
+        try {
+            out.println("KILLING NODE " + currentNodeId);
+            currentNode.kill();
+            out.println("Node is now 'dead'");
+        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
+    }
+
+    private void reviveNode() {
+        if (currentNode == null) { out.println("Not connected to any node."); return; }
+        try {
+            out.println("REVIVING NODE " + currentNodeId);
+            currentNode.revive();
+            out.println("Node is back online");
+        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
     private void printHelp() {
-        System.out.println("\n=== Available Commands ===");
-        System.out.println("status (s)       - Show node status");
-        System.out.println("join <host> <port> - Join network via existing node");
-        System.out.println("leave            - Leave the network");
-        System.out.println("list             - List known nodes");
-        System.out.println("entercs (request) - Request critical section");
-        System.out.println("leavecs (release) - Release critical section");
-        System.out.println("getvar           - Read shared variable");
-        System.out.println("setvar <value>   - Write shared variable (must be in CS)");
-        System.out.println("delay <ms>       - Set message delay");
-        System.out.println("kill             - Simulate node crash");
-        System.out.println("revive           - Revive crashed node");
-        System.out.println("detect           - Detect dead nodes");
-        System.out.println("clock            - Show logical clock");
-        System.out.println("queue            - Show request queue");
-        System.out.println("help (?)         - Show this help");
-        System.out.println("exit (quit)      - Shutdown node");
-        System.out.println();
+        out.println("Available Commands");
+        out.println("connect <host> <port> - Connect to remote node");
+        out.println("addnode <host> <port> - Join network via node");
+        out.println("leave                 - Leave network");
+        out.println("list                  - List known nodes");
+        out.println("request (entercs)     - Request critical section");
+        out.println("release (leavecs)     - Release critical section");
+        out.println("getvar                - Get shared variable");
+        out.println("setvar <value>        - Set shared variable");
+        out.println("status (s)            - Show node status");
+        out.println("clock                 - Show logical clock");
+        out.println("queue                 - Show request queue");
+        out.println("delay <ms>            - Set message delay");
+        out.println("kill                  - Simulate node crash");
+        out.println("revive                - Revive crashed node");
+        out.println("detect                - Detect dead nodes");
+        out.println("help (?)              - Show this help");
+        out.println("exit (quit)           - Exit program");
     }
 
     @Override
     public void run() {
-        System.out.println("\n=== Interactive Console Started ===");
-        System.out.println("Type 'help' for available commands\n");
+        String commandline = "";
+        out.println("Interactive Node CLI");
+        printHelp();
 
-        while (reading) {
-            System.out.print("cmd > ");
+        while (reading == true) {
+            commandline = "";
+            out.print(getPrompt());
             try {
-                String commandline = reader.readLine();
-                if (commandline == null) break; // EOF
-                if (!commandline.trim().isEmpty()) {
-                    parseCommandLine(commandline);
-                }
+                commandline = reader.readLine();
+                parse_commandline(commandline);
             } catch (IOException e) {
-                System.err.println("Error reading console input: " + e.getMessage());
+                err.println("ConsoleHandler - error in reading console input.");
+                e.printStackTrace();
                 reading = false;
             }
         }
-        System.out.println("Console closed.");
+        out.println("Closing ConsoleHandler.");
     }
 
     public void stop() {
