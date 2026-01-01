@@ -95,7 +95,7 @@ public class ConsoleHandler implements Runnable {
                     requestCS();
                     break;
                 case "release":
-                    releaseCS();
+                    currentNode.leaveCS();
                     break;
                 case "queue":
                     showQueue();
@@ -130,7 +130,6 @@ public class ConsoleHandler implements Runnable {
     }
 
     private void addNode(String hostname, int port) {
-        if (currentNode == null) { out.println("Not connected."); return; }
         try {
             Registry registry = LocateRegistry.getRegistry(hostname, port);
             Node networkNode = (Node) registry.lookup(String.valueOf(port));
@@ -150,7 +149,6 @@ public class ConsoleHandler implements Runnable {
     }
 
     private void listNodes() {
-        if (currentNode == null) { out.println("Not connected."); return; }
         try {
             java.util.List<Long> nodes = currentNode.getKnownNodes();
             out.println("Known Nodes:");
@@ -160,7 +158,6 @@ public class ConsoleHandler implements Runnable {
     }
 
     private void showStatus() {
-        if (currentNode == null) { out.println("Not connected."); return; }
         try {
             out.println("Node Status:");
             out.println("Node ID: " + currentNodeId);
@@ -173,20 +170,17 @@ public class ConsoleHandler implements Runnable {
     }
 
     private void showClock() {
-        if (currentNode == null) { out.println("Not connected."); return; }
         try { out.println("Logical Clock: " + currentNode.getLogicalClock()); }
         catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
     private void setDelay(int delayMs) {
-        if (currentNode == null) { out.println("Not connected."); return; }
         try {
             currentNode.setMessageDelayMs(delayMs);
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
     private void requestCS() {
-        if (currentNode == null) { out.println("Not connected."); return; }
         out.println("Requesting critical section (async)");
         new Thread(() -> {
             try {
@@ -199,15 +193,7 @@ public class ConsoleHandler implements Runnable {
         }).start();
     }
 
-    private void releaseCS() {
-        if (currentNode == null) { out.println("Not connected."); return; }
-        try {
-            currentNode.leaveCS();
-        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
-    }
-
     private void showQueue() {
-        if (currentNode == null) { out.println("Not connected."); return; }
         try {
             out.println("Request Queue: " + currentNode.getQueueStatus());
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
