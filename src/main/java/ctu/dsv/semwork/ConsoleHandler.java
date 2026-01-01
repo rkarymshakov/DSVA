@@ -71,10 +71,6 @@ public class ConsoleHandler implements Runnable {
                 case "help":
                     printHelp();
                     break;
-                case "exit":
-                    reading = false;
-                    System.exit(0);
-                    break;
                 default:
                     out.println("Unrecognized command. Type 'help' for available commands");
             }
@@ -110,7 +106,6 @@ public class ConsoleHandler implements Runnable {
         out.println("revive                - Revive crashed node");
         out.println("detect                - Detect dead nodes");
         out.println("help                  - Show this help");
-        out.println("exit                  - Exit program");
     }
 
     @Override
