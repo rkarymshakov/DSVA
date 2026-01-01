@@ -96,7 +96,6 @@ public class ConsoleHandler implements Runnable {
 
     private void printHelp() {
         out.println("Commands");
-        out.println("connect <host> <port> - Connect to remote node");
         out.println("addnode <host> <port> - Join network via node");
         out.println("leave                 - Leave network");
         out.println("list                  - List known nodes");
