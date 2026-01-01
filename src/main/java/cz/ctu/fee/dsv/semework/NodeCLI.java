@@ -31,7 +31,6 @@ public class NodeCLI {
                         }
                         connect(parts[1], Integer.parseInt(parts[2]));
                         break;
-
                     case "addnode":
                         if (parts.length < 3) {
                             System.out.println("Usage: addnode <hostname> <port>");
@@ -39,35 +38,27 @@ public class NodeCLI {
                         }
                         addNode(parts[1], Integer.parseInt(parts[2]));
                         break;
-
                     case "leave":
                         leave();
                         break;
-
                     case "list":
                         listNodes();
                         break;
-
                     case "status":
                         showStatus();
                         break;
-
                     case "clock":
                         showClock();
                         break;
-
                     case "kill":
                         killNode();
                         break;
-
                     case "revive":
                         reviveNode();
                         break;
-
                     case "getvar":
                         getVariable();
                         break;
-
                     case "setvar":
                         if (parts.length < 2) {
                             System.out.println("Usage: setvar <value>");
@@ -75,7 +66,6 @@ public class NodeCLI {
                         }
                         setVariable(Integer.parseInt(parts[1]));
                         break;
-
                     case "delay":
                         if (parts.length < 2) {
                             System.out.println("Usage: delay <milliseconds>");
@@ -83,29 +73,23 @@ public class NodeCLI {
                         }
                         setDelay(Integer.parseInt(parts[1]));
                         break;
-
                     case "detect":
                         detectDeadNodes();
                         break;
-
                     case "request":
                         requestCS();
                         break;
-
                     case "release":
                         releaseCS();
                         break;
-
                     case "help":
                         printHelp();
                         break;
-
                     case "exit":
                     case "quit":
                         System.out.println("Goodbye!");
                         scanner.close();
                         return;
-
                     default:
                         System.out.println("Unknown command: " + command + ". Type 'help' for available commands");
                 }

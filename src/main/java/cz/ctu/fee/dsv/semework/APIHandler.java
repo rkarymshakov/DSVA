@@ -3,7 +3,6 @@ package cz.ctu.fee.dsv.semework;
 import io.javalin.Javalin;
 
 public class APIHandler {
-
     private final NodeImpl node;
     private final int port;
     private Javalin app;
