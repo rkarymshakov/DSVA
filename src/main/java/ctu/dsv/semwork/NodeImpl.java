@@ -140,11 +140,21 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         logger.logInfo("Added node " + otherNodeId + " (Total: " + knownNodes.size() + ")", logicalClock);
 
         if (wantCS && !inCriticalSection) {
-            try {
-                logger.logInfo("  -> Sending automatic REPLY to new node " + otherNodeId + " (we are waiting for CS)", logicalClock);
-                nodeRef.replyCS(nodeId, logicalClock);
-            } catch (RemoteException e) {
-                logger.logError("  Failed to send automatic reply to new node " + otherNodeId, logicalClock);
+            Request myPendingRequest = null;
+            synchronized (requestQueue) {
+                for (Request r : requestQueue)
+                    if (r.nodeId == this.nodeId) {
+                        myPendingRequest = r;
+                        break;
+                    }
+            }
+            if (myPendingRequest != null) {
+                try {
+                    logger.logInfo("  -> Re-sending REQUEST to new node " + otherNodeId + " (deadlock prevention)", logicalClock);
+                    nodeRef.requestCS(this.nodeId, myPendingRequest.timestamp);
+                } catch (RemoteException e) {
+                    logger.logError("  Failed to send request to new node " + otherNodeId, logicalClock);
+                }
             }
         }
     }
