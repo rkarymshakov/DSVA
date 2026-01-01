@@ -167,7 +167,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void enterCS() throws RemoteException {
-        if (isDead) return;
+        ensureAlive();
 
         incrementClock();
         wantCS = true;
@@ -275,7 +275,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public synchronized void updateSharedVariable(int value, int timestamp, long sourceNodeId) throws RemoteException {
-        if (isDead) return;
+        ensureAlive();
         updateClock(timestamp);
         this.sharedVariable = value;
         log("Updated Shared Variable from " + sourceNodeId + " to " + value);
@@ -376,7 +376,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void notifyNodeDead(long deadNodeId) throws RemoteException {
-        if(isDead) return;
+        ensureAlive();
         log("Received notification: Node " + deadNodeId + " is dead/gone.");
         removeNode(deadNodeId);
     }
