@@ -118,6 +118,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             Registry registry = LocateRegistry.getRegistry(ip, port);
             Node networkNode = (Node) registry.lookup(String.valueOf(port));
 
+            if (networkNode.getNodeId() == this.nodeId)
+                throw new RemoteException("Cannot join itself.");
             logger.logInfo("Attempting to join network via " + ip + ":" + port, logicalClock);
             Map<Long, Node> networkTopology = networkNode.join(this.nodeId, this);
 
@@ -160,8 +162,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void addNode(long otherNodeId, Node nodeRef) throws RemoteException {
         ensureAlive();
-        if (otherNodeId == this.nodeId)
-            return;
         incrementClock();
         knownNodes.put(otherNodeId, nodeRef);
         logger.logInfo("Added node " + otherNodeId + " (Total: " + knownNodes.size() + ")", logicalClock);
