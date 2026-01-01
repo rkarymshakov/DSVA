@@ -35,7 +35,7 @@ This project implements **Lamport’s distributed mutual exclusion algorithm** t
 │   │   ├── NodeImpl.java       # Core Lamport algorithm & logic
 │   │   ├── APIHandler.java     # REST API controller
 │   │   ├── NodeRunner.java     # Main entry point
-│   │   └── NodeCLI.java        # Interactive client
+│   │   └── ConsoleHandler.java        # Interactive CLI
 │   └── pom.xml                 # Maven configuration
 ├── bash_variables.sh           # Environment config (IPs, ports)
 ├── start_nodes.sh              # Deploys and starts nodes
