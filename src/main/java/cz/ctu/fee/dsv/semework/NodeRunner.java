@@ -19,7 +19,6 @@ public class NodeRunner {
         }
 
         // === 1. Calculate REST Port (Offset by 1000) ===
-        // Example: If RMI is 2010, REST API is on 3010
         int restPort = rmiPort + 1000;
 
         try {

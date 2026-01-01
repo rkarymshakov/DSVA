@@ -49,25 +49,20 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         logger.logInfo("Node created with ID: " + nodeId, logicalClock);
     }
 
-//    public static long generateId(String ip, int port) {
-//        String idStr = ip + ":" + port;
-//        return Math.abs(idStr.hashCode());
-//    }
-
     public static long generateId(String address, int port) {
         String[] array = address.split("\\.");
         long id = 0;
-        long shift = 0, temp = 0;
-        for(int i = 0 ; i < array.length; i++){
-            temp = Long.parseLong(array[i]);
-            id = (long) (id * 1000);
+        long temp;
+        for (String s : array) {
+            temp = Long.parseLong(s);
+            id = id * 1000;
             id += temp;
         }
         if (id == 0) {
             long fallbackId = Math.abs(address.hashCode());
             id = fallbackId + port * 1000000000000L;
         }
-        id = id + port*1000000000000l;
+        id = id + port * 1000000000000L;
         return id;
     }
 
