@@ -160,6 +160,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void addNode(long otherNodeId, Node nodeRef) throws RemoteException {
         ensureAlive();
+        if (otherNodeId == this.nodeId)
+            return;
         incrementClock();
         knownNodes.put(otherNodeId, nodeRef);
         logger.logInfo("Added node " + otherNodeId + " (Total: " + knownNodes.size() + ")", logicalClock);
