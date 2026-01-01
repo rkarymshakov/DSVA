@@ -26,7 +26,7 @@ public class ConsoleHandler implements Runnable {
 
         try {
             switch (command) {
-                case "addnode":
+                case "join":
                     if (parts.length < 3)
                         break;
                     currentNode.joinNetwork((parts[1]), Integer.parseInt(parts[2]));
@@ -96,7 +96,7 @@ public class ConsoleHandler implements Runnable {
 
     private void printHelp() {
         out.println("Commands");
-        out.println("addnode <host> <port> - Join network via node");
+        out.println("join <host> <port> - Join network via node");
         out.println("leave                 - Leave network");
         out.println("list                  - List known nodes");
         out.println("request               - Request critical section");
