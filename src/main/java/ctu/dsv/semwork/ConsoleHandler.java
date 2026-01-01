@@ -91,7 +91,7 @@ public class ConsoleHandler implements Runnable {
     }
 
     private void printHelp() {
-        out.println("Commands");
+        out.println("Commands:");
         out.println("join <host> <port> - Join network via node");
         out.println("leave                 - Leave network");
         out.println("list                  - List known nodes");
@@ -118,6 +118,7 @@ public class ConsoleHandler implements Runnable {
                 out.print("[Node " + currentNode.getNodeId() + "]> ");
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
+
             }
             try {
                 commandline = reader.readLine();
