@@ -96,9 +96,6 @@ public class ConsoleHandler implements Runnable {
                 case "release":
                     currentNode.leaveCS();
                     break;
-                case "queue":
-                    currentNode.getQueueStatus();
-                    break;
                 case "help":
                     printHelp();
                     break;
@@ -164,7 +161,6 @@ public class ConsoleHandler implements Runnable {
         out.println("setvar <value>        - Set shared variable");
         out.println("status                - Show node status");
         out.println("clock                 - Show logical clock");
-        out.println("queue                 - Show request queue");
         out.println("delay <ms>            - Set message delay");
         out.println("kill                  - Simulate node crash");
         out.println("revive                - Revive crashed node");
