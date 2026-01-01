@@ -1,4 +1,4 @@
-package cz.ctu.fee.dsv.semwork;
+package ctu.dsv.semwork;
 
 import io.javalin.Javalin;
 
