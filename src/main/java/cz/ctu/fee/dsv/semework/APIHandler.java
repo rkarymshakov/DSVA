@@ -17,8 +17,6 @@ public class APIHandler {
 
         System.out.println("REST API started on port " + port);
 
-        // === TOPOLOGY OPERATIONS ===
-
         app.post("/join/{ip}/{port}", ctx -> {
             String ip = ctx.pathParam("ip");
             int targetPort = Integer.parseInt(ctx.pathParam("port"));
@@ -37,8 +35,6 @@ public class APIHandler {
             node.leave();
             ctx.result("Left the network.");
         });
-
-        // === SIMULATION: FAILURE & RECOVERY ===
 
         app.post("/kill", ctx -> {
             node.kill();
@@ -61,11 +57,8 @@ public class APIHandler {
             ctx.result("Failure detection cycle triggered.");
         });
 
-        // === ALGORITHM: MUTUAL EXCLUSION ===
-
         app.post("/enter-cs", ctx -> {
-            // We run this in a blocking way so the HTTP response confirms entry
-            try {
+            try { // run this in a blocking way so the HTTP response confirms entry
                 node.enterCS();
                 ctx.result("Entered Critical Section");
             } catch (Exception e) {
@@ -78,30 +71,21 @@ public class APIHandler {
             ctx.result("Left Critical Section");
         });
 
-        // === SHARED VARIABLE ===
+        app.get("/var", ctx -> ctx.result(String.valueOf(node.getSharedVariable())));
 
-        // Get Variable
-        app.get("/var", ctx -> {
-            ctx.result(String.valueOf(node.getSharedVariable()));
-        });
-
-        // Set Variable
         app.post("/var/{value}", ctx -> {
             int val = Integer.parseInt(ctx.pathParam("value"));
             node.setSharedVariable(val);
             ctx.result("Shared variable set to " + val);
         });
 
-        // === STATUS/DEBUG ===
-
         app.get("/status", ctx -> {
-            StringBuilder sb = new StringBuilder();
-            sb.append("Node ID: ").append(node.getNodeId()).append("\n");
-            sb.append("Clock: ").append(node.getLogicalClock()).append("\n");
-            sb.append("In CS: ").append(node.isInCriticalSection()).append("\n");
-            sb.append("Queue: ").append(node.getQueueStatus()).append("\n");
-            sb.append("Known Nodes: ").append(node.getKnownNodes()).append("\n");
-            ctx.result(sb.toString());
+            String sb = "Node ID: " + node.getNodeId() + "\n" +
+                    "Clock: " + node.getLogicalClock() + "\n" +
+                    "In CS: " + node.isInCriticalSection() + "\n" +
+                    "Queue: " + node.getQueueStatus() + "\n" +
+                    "Known Nodes: " + node.getKnownNodes() + "\n";
+            ctx.result(sb);
         });
     }
 
