@@ -40,7 +40,6 @@ This project implements **Lamport’s distributed mutual exclusion algorithm** t
 ├── bash_variables.sh           # Environment config (IPs, ports)
 ├── start_nodes.sh              # Deploys and starts nodes
 ├── control_nodes.sh            # Automated test scenario
-├── stop_system.sh              # Stops all running nodes
 └── README.md
 ```
 
