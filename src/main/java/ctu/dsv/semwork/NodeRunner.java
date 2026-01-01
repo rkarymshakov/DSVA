@@ -18,7 +18,6 @@ public class NodeRunner {
             }
         }
 
-        // === 1. Calculate REST Port (Offset by 1000) ===
         int restPort = rmiPort + 1000;
 
         try {
@@ -28,18 +27,25 @@ public class NodeRunner {
             System.out.println("Starting Node ID: " + nodeId);
             NodeImpl nodeImpl = new NodeImpl(nodeId);
 
-            // === 2. Start REST API ===
+            // Start REST API
             APIHandler apiHandler = new APIHandler(nodeImpl, restPort);
             apiHandler.start();
 
+            // *** START INTEGRATED CLI ***
+            ConsoleHandler consoleHandler = new ConsoleHandler(nodeImpl);
+            Thread consoleThread = new Thread(consoleHandler, "ConsoleHandler");
+            consoleThread.setDaemon(false); // Keep JVM alive
+            consoleThread.start();
+
             // Shutdown Hook
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                System.out.println("Shutting down...");
-                apiHandler.stop(); // Stop REST
+                System.out.println("\nShutting down...");
+                consoleHandler.stop();
+                apiHandler.stop();
                 nodeImpl.shutdown();
             }));
 
-            // === 3. RMI Setup (Existing Code) ===
+            // RMI Setup
             Registry registry;
             try {
                 registry = LocateRegistry.createRegistry(rmiPort);
@@ -50,7 +56,7 @@ public class NodeRunner {
 
             System.out.println("RMI Registry: port " + rmiPort);
             System.out.println("REST API:     port " + restPort);
-            System.out.println("Ready.");
+            System.out.println("Node Ready.\n");
 
         } catch (Exception e) {
             e.printStackTrace();
