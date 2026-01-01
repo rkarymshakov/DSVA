@@ -149,18 +149,6 @@ public class ConsoleHandler implements Runnable {
         } catch (Exception e) { err.println("Failed to add node: " + e.getMessage()); }
     }
 
-    private void leave() {
-        if (currentNode == null) { out.println("Not connected."); return; }
-        try {
-            java.util.List<Long> topologyBefore = currentNode.getKnownNodes();
-            if (topologyBefore.isEmpty()) { out.println("Node " + currentNodeId + " is isolated."); return; }
-
-            currentNode.leave();
-            java.util.List<Long> topologyAfter = currentNode.getKnownNodes();
-            out.println("Leave complete. Remaining connections: " + topologyAfter.size());
-        } catch (Exception e) { err.println("Failed to leave network: " + e.getMessage()); }
-    }
-
     private void listNodes() {
         if (currentNode == null) { out.println("Not connected."); return; }
         try {
@@ -190,32 +178,11 @@ public class ConsoleHandler implements Runnable {
         catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
-    private void getVariable() {
-        if (currentNode == null) { out.println("Not connected."); return; }
-        try { out.println("Shared Variable = " + currentNode.getSharedVariable()); }
-        catch (Exception e) { err.println("Error: " + e.getMessage()); }
-    }
-
-    private void setVariable(int value) {
-        if (currentNode == null) { out.println("Not connected."); return; }
-        try {
-            currentNode.setSharedVariable(value);
-        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
-    }
-
     private void setDelay(int delayMs) {
         if (currentNode == null) { out.println("Not connected."); return; }
         try {
             currentNode.setMessageDelayMs(delayMs);
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
-    }
-
-    private void detectDeadNodes() {
-        if (currentNode == null) { out.println("Not connected."); return; }
-        try {
-            currentNode.detectDeadNodes();
-            out.println("Failure detection complete. Check node logs for details.");
-        } catch (Exception e) { err.println("Detection failed: " + e.getMessage()); }
     }
 
     private void requestCS() {
