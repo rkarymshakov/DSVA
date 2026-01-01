@@ -27,7 +27,7 @@ public class ConsoleHandler implements Runnable {
     }
 
     private String getPrompt() {
-        return currentNode == null ? "[Not Connected]> " : "[Node " + currentNodeId + "]> ";
+        return "[Node " + currentNodeId + "]> ";
     }
 
     private void parse_commandline(String commandline) {
@@ -59,11 +59,10 @@ public class ConsoleHandler implements Runnable {
                     listNodes();
                     break;
                 case "status":
-                case "s":
                     showStatus();
                     break;
                 case "clock":
-                    showClock();
+                    currentNode.getLogicalClock();
                     break;
                 case "kill":
                     currentNode.kill();
@@ -86,7 +85,7 @@ public class ConsoleHandler implements Runnable {
                         out.println("Usage: delay <milliseconds>");
                         break;
                     }
-                    setDelay(Integer.parseInt(parts[1]));
+                    currentNode.setMessageDelayMs(Integer.parseInt(parts[1]));
                     break;
                 case "detect":
                     currentNode.detectDeadNodes();
@@ -169,17 +168,6 @@ public class ConsoleHandler implements Runnable {
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
-    private void showClock() {
-        try { out.println("Logical Clock: " + currentNode.getLogicalClock()); }
-        catch (Exception e) { err.println("Error: " + e.getMessage()); }
-    }
-
-    private void setDelay(int delayMs) {
-        try {
-            currentNode.setMessageDelayMs(delayMs);
-        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
-    }
-
     private void requestCS() {
         out.println("Requesting critical section (async)");
         new Thread(() -> {
@@ -209,7 +197,7 @@ public class ConsoleHandler implements Runnable {
         out.println("release               - Release critical section");
         out.println("getvar                - Get shared variable");
         out.println("setvar <value>        - Set shared variable");
-        out.println("status (s)            - Show node status");
+        out.println("status                - Show node status");
         out.println("clock                 - Show logical clock");
         out.println("queue                 - Show request queue");
         out.println("delay <ms>            - Set message delay");
