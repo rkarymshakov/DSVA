@@ -131,7 +131,7 @@ public class ConsoleHandler implements Runnable {
 
         while (reading) {
             try {
-                out.print(getPrompt());
+                out.print("[Node " + currentNode.getNodeId() + "]> ");
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
             }
