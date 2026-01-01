@@ -18,10 +18,6 @@ public class ConsoleHandler implements Runnable {
         reader = new BufferedReader(new InputStreamReader(System.in));
     }
 
-    private String getPrompt() throws RemoteException {
-        return "[Node " + currentNode.getNodeId() + "]> ";
-    }
-
     private void parse_commandline(String commandline) {
         if (commandline.trim().isEmpty()) return;
 
