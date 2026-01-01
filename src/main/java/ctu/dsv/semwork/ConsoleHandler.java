@@ -91,7 +91,7 @@ public class ConsoleHandler implements Runnable {
                     currentNode.detectDeadNodes();
                     break;
                 case "request":
-                    requestCS();
+                    currentNode.enterCS();
                     break;
                 case "release":
                     currentNode.leaveCS();
@@ -143,7 +143,6 @@ public class ConsoleHandler implements Runnable {
 
     private void showStatus() {
         try {
-            out.println("Node Status:");
             out.println("Node ID: " + currentNodeId);
             out.println("Logical Clock: " + currentNode.getLogicalClock());
             out.println("In CS: " + currentNode.isInCriticalSection());
@@ -153,21 +152,8 @@ public class ConsoleHandler implements Runnable {
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
-    private void requestCS() {
-        out.println("Requesting critical section (async)");
-        new Thread(() -> {
-            try {
-                currentNode.enterCS();
-                out.print(getPrompt());
-            } catch (Exception e) {
-                err.println("CRITICAL SECTION REQUEST FAILED: " + e.getMessage());
-                out.print(getPrompt());
-            }
-        }).start();
-    }
-
     private void printHelp() {
-        out.println("Available Commands");
+        out.println("Commands");
         out.println("connect <host> <port> - Connect to remote node");
         out.println("addnode <host> <port> - Join network via node");
         out.println("leave                 - Leave network");
