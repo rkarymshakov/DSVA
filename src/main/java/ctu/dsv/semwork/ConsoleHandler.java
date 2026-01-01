@@ -5,16 +5,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
 
 public class ConsoleHandler implements Runnable {
-
     private boolean reading = true;
     private final BufferedReader reader;
     private final PrintStream out = System.out;
     private final PrintStream err = System.err;
-    private NodeImpl currentNode;
+    private final NodeImpl currentNode;
 
     public ConsoleHandler(NodeImpl myNode) {
         this.currentNode = myNode;
@@ -33,13 +30,6 @@ public class ConsoleHandler implements Runnable {
 
         try {
             switch (command) {
-                case "connect":
-                    if (parts.length < 3) {
-                        out.println("Usage: connect <hostname> <port>");
-                        break;
-                    }
-                    connect(parts[1], Integer.parseInt(parts[2]));
-                    break;
                 case "addnode":
                     if (parts.length < 3) {
                         out.println("Usage: addnode <hostname> <port>");
@@ -100,17 +90,6 @@ public class ConsoleHandler implements Runnable {
             }
         } catch (Exception e) {
             err.println("Error: " + e.getMessage());
-        }
-    }
-
-    private void connect(String hostname, int port) {
-        try {
-            Registry registry = LocateRegistry.getRegistry(hostname, port);
-            currentNode = (NodeImpl) registry.lookup(String.valueOf(port));
-            out.println("Connected to node ID: " + currentNode.getNodeId());
-        } catch (Exception e) {
-            err.println("Connection failed: " + e.getMessage());
-            currentNode = null;
         }
     }
 
