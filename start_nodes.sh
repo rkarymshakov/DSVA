@@ -3,9 +3,7 @@
 # Load variables
 source bash_variables.sh
 
-echo "================================================="
-echo "   LAMPORT SYSTEM: REMOTE DEPLOYMENT & START"
-echo "================================================="
+echo "   DSVA project: DEPLOYMENT & START"
 
 ### 1. FETCH CODE (ON MASTER VM)
 if [ ! -d ${SEMWORK_HOMEDIR}/${CODE_SUBDIR} ] ; then
@@ -62,6 +60,4 @@ for ID in $(seq 1 $NUM_NODES) ; do
   echo "  -> Node $ID started on $TARGET_IP (Ports: ${NODE_PORT[$ID]} / ${NODE_API_PORT[$ID]})"
 done
 
-echo "================================================="
 echo "   DEPLOYMENT COMPLETE"
-echo "================================================="

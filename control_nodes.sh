@@ -2,9 +2,7 @@
 source bash_variables.sh
 
 SLEEP_TIME=2
-echo "================================================="
 echo "   TEST SCENARIO (Using Remote IPs)"
-echo "================================================="
 
 # 1. Topology
 echo "[STEP] Node 2 (${NODE_IP[2]}) joining Node 1 (${NODE_IP[1]})..."
