@@ -171,11 +171,10 @@ public class ConsoleHandler implements Runnable {
 
     @Override
     public void run() {
-        String commandline = "";
+        String commandline;
         printHelp();
 
         while (reading == true) {
-            commandline = "";
             out.print(getPrompt());
             try {
                 commandline = reader.readLine();
