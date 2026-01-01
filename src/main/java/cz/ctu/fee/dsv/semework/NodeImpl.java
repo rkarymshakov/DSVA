@@ -383,7 +383,11 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     private synchronized boolean canEnterCS() {
         if (!wantCS || isDead) return false;
-        synchronized (requestQueue) { return !requestQueue.isEmpty() && requestQueue.peek().nodeId == nodeId; }
+        synchronized (requestQueue) {
+            if (requestQueue.isEmpty() || requestQueue.peek().nodeId != nodeId)
+                return false;
+        }
+        return repliesReceivedForMyRequest.size() == knownNodes.size();
     }
 
     private boolean isNodeReachable(long neighborId, Node neighbor) {
