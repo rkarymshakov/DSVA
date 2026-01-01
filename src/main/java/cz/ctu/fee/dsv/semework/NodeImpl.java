@@ -187,7 +187,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         synchronized (this) {
             inCriticalSection = true;
-            logger.logInfo(">>> ENTERED CRITICAL SECTION <<<", logicalClock);
+            logger.logInfo("ENTERED CRITICAL SECTION", logicalClock);
         }
     }
 
@@ -246,7 +246,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         synchronized (requestQueue) { requestQueue.removeIf(r -> r.nodeId == nodeId); }
         broadcast((id, node) -> node.releaseCS(nodeId, logicalClock));
         repliesReceivedForMyRequest.clear();
-        logger.logInfo(">>> LEFT CRITICAL SECTION <<<", logicalClock);
+        logger.logInfo("LEFT CRITICAL SECTION", logicalClock);
     }
 
     @Override
