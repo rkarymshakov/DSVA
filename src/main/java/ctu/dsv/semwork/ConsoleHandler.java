@@ -26,7 +26,7 @@ public class ConsoleHandler implements Runnable {
 
         try {
             switch (command) {
-                case "join":
+                case "j":
                     if (parts.length < 3)
                         break;
                     currentNode.joinNetwork((parts[1]), Integer.parseInt(parts[2]));
@@ -34,41 +34,41 @@ public class ConsoleHandler implements Runnable {
                 case "leave":
                     currentNode.leave();
                     break;
-                case "list":
+                case "l":
                     currentNode.getKnownNodes().forEach(id -> out.println("Node ID: " + id));
                     break;
-                case "status":
+                case "s":
                     showStatus();
                     break;
-                case "kill":
+                case "k":
                     currentNode.kill();
                     break;
-                case "revive":
+                case "rev":
                     currentNode.revive();
                     break;
-                case "getvar":
+                case "gv":
                     currentNode.getSharedVariable();
                     break;
-                case "setvar":
+                case "sv":
                     if (parts.length < 2)
                         break;
                     currentNode.setSharedVariable(Integer.parseInt(parts[1]));
                     break;
-                case "delay":
+                case "d":
                     if (parts.length < 2)
                         break;
                     currentNode.setMessageDelayMs(Integer.parseInt(parts[1]));
                     break;
-                case "detect":
+                case "det":
                     currentNode.detectDeadNodes();
                     break;
-                case "request":
+                case "req":
                     currentNode.enterCS();
                     break;
-                case "release":
+                case "rel":
                     currentNode.leaveCS();
                     break;
-                case "help":
+                case "?":
                     printHelp();
                     break;
                 default:
@@ -92,20 +92,20 @@ public class ConsoleHandler implements Runnable {
 
     private void printHelp() {
         out.println("Commands:");
-        out.println("join <host> <port> - Join network via node");
+        out.println("j <host> <port>       - Join network via node");
         out.println("leave                 - Leave network");
-        out.println("list                  - List known nodes");
-        out.println("request               - Request critical section");
-        out.println("release               - Release critical section");
-        out.println("getvar                - Get shared variable");
-        out.println("setvar <value>        - Set shared variable");
-        out.println("status                - Show node status");
-        out.println("clock                 - Show logical clock");
-        out.println("delay <ms>            - Set message delay");
-        out.println("kill                  - Simulate node crash");
-        out.println("revive                - Revive crashed node");
-        out.println("detect                - Detect dead nodes");
-        out.println("help                  - Show this help");
+        out.println("l                     - List known nodes");
+        out.println("req                   - Request critical section");
+        out.println("rel                   - Release critical section");
+        out.println("gv                    - Get shared variable");
+        out.println("sv <value>            - Set shared variable");
+        out.println("s                     - Show node status");
+        out.println("c                     - Show logical clock");
+        out.println("d <ms>                - Set message delay");
+        out.println("k                     - Simulate node crash");
+        out.println("rev                   - Revive crashed node");
+        out.println("det                   - Detect dead nodes");
+        out.println("?                     - Show this help");
     }
 
     @Override
