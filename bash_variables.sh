@@ -19,10 +19,9 @@ NUM_NODES=2
 BASE_PORT=2010
 
 # DEFINE YOUR REAL VM IPS HERE
-# Example: VM1 is Master, VM2 is Worker
 NODE_IP[1]=192.168.56.106
 NODE_IP[2]=192.168.56.107
-# NODE_IP[3]=192.168.56.103
+NODE_IP[3]=192.168.56.108
 
 # Auto-calculate ports (RMI Port and REST API Port)
 for I in $(seq 1 $NUM_NODES) ; do
