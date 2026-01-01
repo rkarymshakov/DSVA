@@ -13,12 +13,10 @@ public class ConsoleHandler implements Runnable {
     private BufferedReader reader = null;
     private PrintStream out = System.out;
     private PrintStream err = System.err;
-    private NodeImpl myNode;
     private Node currentNode;
     private long currentNodeId = -1;
 
     public ConsoleHandler(NodeImpl myNode) {
-        this.myNode = myNode;
         this.currentNode = myNode;
         try {
             this.currentNodeId = myNode.getNodeId();
@@ -55,7 +53,7 @@ public class ConsoleHandler implements Runnable {
                     addNode(parts[1], Integer.parseInt(parts[2]));
                     break;
                 case "leave":
-                    leave();
+                    currentNode.leave();
                     break;
                 case "list":
                     listNodes();
@@ -74,14 +72,14 @@ public class ConsoleHandler implements Runnable {
                     currentNode.revive();
                     break;
                 case "getvar":
-                    getVariable();
+                    currentNode.getSharedVariable();
                     break;
                 case "setvar":
                     if (parts.length < 2) {
                         out.println("Usage: setvar <value>");
                         break;
                     }
-                    setVariable(Integer.parseInt(parts[1]));
+                    currentNode.setSharedVariable(Integer.parseInt(parts[1]));
                     break;
                 case "delay":
                     if (parts.length < 2) {
@@ -91,25 +89,21 @@ public class ConsoleHandler implements Runnable {
                     setDelay(Integer.parseInt(parts[1]));
                     break;
                 case "detect":
-                    detectDeadNodes();
+                    currentNode.detectDeadNodes();
                     break;
                 case "request":
-                case "entercs":
                     requestCS();
                     break;
                 case "release":
-                case "leavecs":
                     releaseCS();
                     break;
                 case "queue":
                     showQueue();
                     break;
                 case "help":
-                case "?":
                     printHelp();
                     break;
                 case "exit":
-                case "quit":
                     out.println("Goodbye!");
                     reading = false;
                     System.exit(0);
@@ -252,21 +246,14 @@ public class ConsoleHandler implements Runnable {
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
-    private void reviveNode() {
-        if (currentNode == null) { out.println("Not connected to any node."); return; }
-        try {
-            currentNode.revive();
-        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
-    }
-
     private void printHelp() {
         out.println("Available Commands");
         out.println("connect <host> <port> - Connect to remote node");
         out.println("addnode <host> <port> - Join network via node");
         out.println("leave                 - Leave network");
         out.println("list                  - List known nodes");
-        out.println("request (entercs)     - Request critical section");
-        out.println("release (leavecs)     - Release critical section");
+        out.println("request               - Request critical section");
+        out.println("release               - Release critical section");
         out.println("getvar                - Get shared variable");
         out.println("setvar <value>        - Set shared variable");
         out.println("status (s)            - Show node status");
@@ -276,8 +263,8 @@ public class ConsoleHandler implements Runnable {
         out.println("kill                  - Simulate node crash");
         out.println("revive                - Revive crashed node");
         out.println("detect                - Detect dead nodes");
-        out.println("help (?)              - Show this help");
-        out.println("exit (quit)           - Exit program");
+        out.println("help                  - Show this help");
+        out.println("exit                  - Exit program");
     }
 
     @Override
