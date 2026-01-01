@@ -4,30 +4,25 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
 public class ConsoleHandler implements Runnable {
 
     private boolean reading = true;
-    private BufferedReader reader = null;
-    private PrintStream out = System.out;
-    private PrintStream err = System.err;
+    private final BufferedReader reader;
+    private final PrintStream out = System.out;
+    private final PrintStream err = System.err;
     private Node currentNode;
-    private long currentNodeId = -1;
 
     public ConsoleHandler(NodeImpl myNode) {
         this.currentNode = myNode;
-        try {
-            this.currentNodeId = myNode.getNodeId();
-        } catch (Exception e) {
-            err.println("Error getting node ID: " + e.getMessage());
-        }
         reader = new BufferedReader(new InputStreamReader(System.in));
     }
 
-    private String getPrompt() {
-        return "[Node " + currentNodeId + "]> ";
+    private String getPrompt() throws RemoteException {
+        return "[Node " + currentNode.getNodeId() + "]> ";
     }
 
     private void parse_commandline(String commandline) {
@@ -116,12 +111,10 @@ public class ConsoleHandler implements Runnable {
         try {
             Registry registry = LocateRegistry.getRegistry(hostname, port);
             currentNode = (Node) registry.lookup(String.valueOf(port));
-            currentNodeId = currentNode.getNodeId();
-            out.println("Connected to node ID: " + currentNodeId);
+            out.println("Connected to node ID: " + currentNode.getNodeId());
         } catch (Exception e) {
             err.println("Connection failed: " + e.getMessage());
             currentNode = null;
-            currentNodeId = -1;
         }
     }
 
@@ -130,7 +123,7 @@ public class ConsoleHandler implements Runnable {
             Registry registry = LocateRegistry.getRegistry(hostname, port);
             Node networkNode = (Node) registry.lookup(String.valueOf(port));
 
-            java.util.Map<Long, Node> existingNodes = networkNode.join(currentNodeId, currentNode);
+            java.util.Map<Long, Node> existingNodes = networkNode.join(currentNode.getNodeId(), currentNode);
             for (java.util.Map.Entry<Long, Node> entry : existingNodes.entrySet()) {
                 currentNode.addNode(entry.getKey(), entry.getValue());
             }
@@ -140,7 +133,7 @@ public class ConsoleHandler implements Runnable {
 
     private void showStatus() {
         try {
-            out.println("Node ID: " + currentNodeId);
+            out.println("Node ID: " + currentNode.getNodeId());
             out.println("Logical Clock: " + currentNode.getLogicalClock());
             out.println("In CS: " + currentNode.isInCriticalSection());
             out.println("Request Queue: " + currentNode.getQueueStatus());
@@ -174,8 +167,12 @@ public class ConsoleHandler implements Runnable {
         String commandline;
         printHelp();
 
-        while (reading == true) {
-            out.print(getPrompt());
+        while (reading) {
+            try {
+                out.print(getPrompt());
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
             try {
                 commandline = reader.readLine();
                 parse_commandline(commandline);
