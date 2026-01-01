@@ -56,7 +56,7 @@ public class ConsoleHandler implements Runnable {
                     currentNode.leave();
                     break;
                 case "list":
-                    listNodes();
+                    currentNode.getKnownNodes().forEach(id -> out.println("Node ID: " + id));
                     break;
                 case "status":
                     showStatus();
@@ -97,7 +97,7 @@ public class ConsoleHandler implements Runnable {
                     currentNode.leaveCS();
                     break;
                 case "queue":
-                    showQueue();
+                    currentNode.getQueueStatus();
                     break;
                 case "help":
                     printHelp();
@@ -133,27 +133,12 @@ public class ConsoleHandler implements Runnable {
             Registry registry = LocateRegistry.getRegistry(hostname, port);
             Node networkNode = (Node) registry.lookup(String.valueOf(port));
 
-            if (!currentNode.getKnownNodes().isEmpty()) {
-                out.println("ERROR: Current node already has connections. Must be isolated to join network.");
-                return;
-            }
-
             java.util.Map<Long, Node> existingNodes = networkNode.join(currentNodeId, currentNode);
             for (java.util.Map.Entry<Long, Node> entry : existingNodes.entrySet()) {
                 currentNode.addNode(entry.getKey(), entry.getValue());
             }
 
-            out.println("Join complete! Known nodes: " + existingNodes.size());
         } catch (Exception e) { err.println("Failed to add node: " + e.getMessage()); }
-    }
-
-    private void listNodes() {
-        try {
-            java.util.List<Long> nodes = currentNode.getKnownNodes();
-            out.println("Known Nodes:");
-            if (nodes.isEmpty()) out.println("(none)");
-            else nodes.forEach(id -> out.println("Node ID: " + id));
-        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
     private void showStatus() {
@@ -179,12 +164,6 @@ public class ConsoleHandler implements Runnable {
                 out.print(getPrompt());
             }
         }).start();
-    }
-
-    private void showQueue() {
-        try {
-            out.println("Request Queue: " + currentNode.getQueueStatus());
-        } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
     private void printHelp() {
