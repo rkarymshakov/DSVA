@@ -87,6 +87,7 @@ public class ConsoleHandler implements Runnable {
             out.println("Request Queue: " + myNode.getQueueStatus());
             out.println("Message Delay: " + myNode.getMessageDelayMs() + "ms");
             out.println("Known Nodes: " + myNode.getKnownNodes().size());
+            out.println("Shared Variable: " + myNode.getSharedVariable());
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
