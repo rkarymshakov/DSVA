@@ -66,7 +66,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         return id;
     }
 
-
     @Override
     public long getNodeId() throws RemoteException {
         return nodeId;
