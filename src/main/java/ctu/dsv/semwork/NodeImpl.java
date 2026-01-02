@@ -273,7 +273,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             logger.logError("ERROR: Attempted to leave CS but was not in it.", logicalClock);
             return;
         }
-        logger.logInfo("LEAVING CRITICAL SECTION", logicalClock);
         inCriticalSection = false;
         wantCS = false;
         incrementClock();

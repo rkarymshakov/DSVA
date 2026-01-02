@@ -72,7 +72,7 @@ public class ConsoleHandler implements Runnable {
                     printHelp();
                     break;
                 default:
-                    out.println("Unrecognized command. Type 'help' for available commands");
+                    out.println("Unrecognized command. Type '?' for available commands");
             }
         } catch (Exception e) {
             err.println("Error: " + e.getMessage());
