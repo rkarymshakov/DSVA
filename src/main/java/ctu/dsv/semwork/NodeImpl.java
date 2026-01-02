@@ -403,7 +403,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         inCriticalSection = true;
     }
 
-    private boolean canEnterCS() {
+    private synchronized boolean canEnterCS() {
         if (!wantCS || isDead) return false;
         synchronized (requestQueue) {
             if (requestQueue.isEmpty() || requestQueue.peek().nodeId != nodeId)
