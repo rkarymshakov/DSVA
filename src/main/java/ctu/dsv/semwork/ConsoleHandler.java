@@ -11,10 +11,10 @@ public class ConsoleHandler implements Runnable {
     private final BufferedReader reader;
     private final PrintStream out = System.out;
     private final PrintStream err = System.err;
-    private final NodeImpl currentNode;
+    private final NodeImpl myNode;
 
     public ConsoleHandler(NodeImpl myNode) {
-        this.currentNode = myNode;
+        this.myNode = myNode;
         reader = new BufferedReader(new InputStreamReader(System.in));
     }
 
@@ -29,44 +29,44 @@ public class ConsoleHandler implements Runnable {
                 case "j":
                     if (parts.length < 3)
                         break;
-                    currentNode.joinNetwork((parts[1]), Integer.parseInt(parts[2]));
+                    myNode.joinNetwork((parts[1]), Integer.parseInt(parts[2]));
                     break;
                 case "leave":
-                    currentNode.leave();
+                    myNode.leave();
                     break;
                 case "l":
-                    currentNode.getKnownNodes().forEach(id -> out.println("Node ID: " + id));
+                    myNode.getKnownNodes().forEach(id -> out.println("Node ID: " + id));
                     break;
                 case "s":
                     showStatus();
                     break;
                 case "k":
-                    currentNode.kill();
+                    myNode.kill();
                     break;
                 case "rev":
-                    currentNode.revive();
+                    myNode.revive();
                     break;
                 case "gv":
-                    currentNode.getSharedVariable();
+                    myNode.getSharedVariable();
                     break;
                 case "sv":
                     if (parts.length < 2)
                         break;
-                    currentNode.setSharedVariable(Integer.parseInt(parts[1]));
+                    myNode.setSharedVariable(Integer.parseInt(parts[1]));
                     break;
                 case "d":
                     if (parts.length < 2)
                         break;
-                    currentNode.setMessageDelayMs(Integer.parseInt(parts[1]));
+                    myNode.setMessageDelayMs(Integer.parseInt(parts[1]));
                     break;
                 case "det":
-                    currentNode.detectDeadNodes();
+                    myNode.detectDeadNodes();
                     break;
                 case "req":
-                    currentNode.enterCS();
+                    myNode.enterCS();
                     break;
                 case "rel":
-                    currentNode.leaveCS();
+                    myNode.leaveCS();
                     break;
                 case "?":
                     printHelp();
@@ -81,12 +81,12 @@ public class ConsoleHandler implements Runnable {
 
     private void showStatus() {
         try {
-            out.println("Node ID: " + currentNode.getNodeId());
-            out.println("Logical Clock: " + currentNode.getLogicalClock());
-            out.println("In CS: " + currentNode.isInCriticalSection());
-            out.println("Request Queue: " + currentNode.getQueueStatus());
-            out.println("Message Delay: " + currentNode.getMessageDelayMs() + "ms");
-            out.println("Known Nodes: " + currentNode.getKnownNodes().size());
+            out.println("Node ID: " + myNode.getNodeId());
+            out.println("Logical Clock: " + myNode.getLogicalClock());
+            out.println("In CS: " + myNode.isInCriticalSection());
+            out.println("Request Queue: " + myNode.getQueueStatus());
+            out.println("Message Delay: " + myNode.getMessageDelayMs() + "ms");
+            out.println("Known Nodes: " + myNode.getKnownNodes().size());
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
@@ -115,7 +115,7 @@ public class ConsoleHandler implements Runnable {
 
         while (reading) {
             try {
-                out.print("[Node " + currentNode.getNodeId() + "]> ");
+                out.print("[Node " + myNode.getNodeId() + "]> ");
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
 
