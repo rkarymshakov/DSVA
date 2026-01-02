@@ -211,7 +211,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             requestQueue.add(myReq);
             logger.logInfo(" Added self to queue: " + requestQueue, logicalClock);
         }
-
         repliesReceivedForMyRequest.clear();
 
         broadcast((id, node) -> {
@@ -392,9 +391,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     private synchronized void waitForPermission() {
-        while (!canEnterCS()) {
+        while (!canEnterCS())
             try { wait(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-        }
         inCriticalSection = true;
     }
 
@@ -431,9 +429,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private synchronized void updateClock(int receivedTimestamp) { logicalClock = Math.max(logicalClock, receivedTimestamp) + 1; }
 
     private void simulateDelay() {
-        if (messageDelayMs > 0) {
+        if (messageDelayMs > 0)
             try { Thread.sleep(messageDelayMs); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-        }
     }
 
     protected void broadcast(NodeOperation operation) {
