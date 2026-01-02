@@ -131,7 +131,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             logger.logInfo("Successfully joined network. Known nodes: " + knownNodes.keySet(), logicalClock);
         } catch (Exception e) {
             logger.logError("Failed to join network: " + e.getMessage(), logicalClock);
-            throw new RemoteException("Join network failed", e);
         }
     }
 
@@ -312,7 +311,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         ensureAlive();
         updateClock(timestamp);
         this.sharedVariable = value;
-        logger.logInfo("Updated Shared Variable from " + sourceNodeId + " to " + value, logicalClock);
+        logger.logInfo("Updated Shared Variable in Node " + sourceNodeId + " to " + value, logicalClock);
     }
 
     @Override
