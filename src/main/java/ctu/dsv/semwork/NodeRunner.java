@@ -52,8 +52,6 @@ public class NodeRunner {
 
             System.out.println("RMI Registry: port " + rmiPort);
             System.out.println("REST API:     port " + restPort);
-            System.out.println("Node Ready.\n");
-
         } catch (Exception e) {
             e.printStackTrace();
         }
