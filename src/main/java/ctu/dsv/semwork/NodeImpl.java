@@ -120,7 +120,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
             if (networkNode.getNodeId() == this.nodeId)
                 throw new RemoteException("Cannot join itself.");
-            logger.logInfo("Attempting to join network via " + ip + ":" + port, logicalClock);
             Map<Long, Node> networkTopology = networkNode.join(this.nodeId, this);
 
             for (Map.Entry<Long, Node> entry : networkTopology.entrySet())
@@ -183,7 +182,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void leave() throws RemoteException {
         if (knownNodes.isEmpty()) return;
-        logger.logInfo("LEAVE: Leaving network...", logicalClock);
 
         List<Node> nodesToNotify = new ArrayList<>(knownNodes.values());
         knownNodes.clear();
@@ -193,7 +191,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         for (Node node : nodesToNotify)
             try { node.removeNode(this.nodeId); } catch (RemoteException ignored) {}
 
-        logger.logInfo("LEAVE: Complete.", logicalClock);
+        logger.logInfo("Node leaved network.", logicalClock);
     }
 
     @Override
@@ -297,7 +295,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         incrementClock();
         this.sharedVariable = value;
-        logger.logInfo("Writing Shared Variable: " + value, logicalClock);
+        logger.logInfo("Wrote shared variable: " + value, logicalClock);
         broadcast((id, node) -> node.updateSharedVariable(value, logicalClock, nodeId));
     }
 
@@ -317,14 +315,12 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void kill() throws RemoteException {
-        logger.logInfo("SIMULATION: Node KILLED (Stopping communication)", logicalClock);
         this.isDead = true;
+        logger.logInfo("SIMULATION: Node KILLED", logicalClock);
     }
 
     @Override
     public void revive() throws RemoteException {
-        logger.logInfo("SIMULATION: Node REVIVING", logicalClock);
-
         this.isDead = false;
         this.inCriticalSection = false;
         this.wantCS = false;
@@ -340,11 +336,11 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
                 Map<Long, Node> freshTopology = neighbor.join(this.nodeId, this);
                 this.knownNodes.putAll(freshTopology);
                 this.knownNodes.remove(this.nodeId);
-                logger.logInfo("Revive successful! Reconnected via neighbor.", logicalClock);
+                logger.logInfo("Node REVIVED", logicalClock);
                 return;
             } catch (RemoteException ignored) {}
         }
-        logger.logError("Revive failed: No reachable neighbors found. I am isolated.", logicalClock);
+        logger.logError("Revive failed: No reachable neighbors found.", logicalClock);
     }
 
     @Override
