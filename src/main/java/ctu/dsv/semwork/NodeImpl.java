@@ -221,13 +221,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             logger.logInfo(" -> Sending REQUEST to node " + id, logicalClock);
             node.requestCS(nodeId, logicalClock);
         });
-
         waitForPermission();
 
-        synchronized (this) {
-            inCriticalSection = true;
-            logger.logInfo("ENTERED CRITICAL SECTION", logicalClock);
-        }
+        logger.logInfo("ENTERED CRITICAL SECTION", logicalClock);
     }
 
     @Override
@@ -405,6 +401,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         while (!canEnterCS()) {
             try { wait(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         }
+        inCriticalSection = true;
     }
 
     private synchronized boolean canEnterCS() {
