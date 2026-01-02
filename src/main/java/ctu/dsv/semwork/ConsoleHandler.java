@@ -31,11 +31,8 @@ public class ConsoleHandler implements Runnable {
                         break;
                     myNode.joinNetwork((parts[1]), Integer.parseInt(parts[2]));
                     break;
-                case "leave":
-                    myNode.leave();
-                    break;
                 case "l":
-                    myNode.getKnownNodes().forEach(id -> out.println("Node ID: " + id));
+                    myNode.leave();
                     break;
                 case "s":
                     showStatus();
@@ -82,17 +79,16 @@ public class ConsoleHandler implements Runnable {
             out.println("Logical Clock: " + myNode.getLogicalClock());
             out.println("In CS: " + myNode.isInCriticalSection());
             out.println("Request Queue: " + myNode.getQueueStatus());
-            out.println("Message Delay: " + myNode.getMessageDelayMs() + "ms");
             out.println("Known Nodes: " + myNode.getKnownNodes().size());
+            myNode.getKnownNodes().forEach(id -> out.println("Node ID: " + id));
+            out.println("Message Delay: " + myNode.getMessageDelayMs() + "ms");
             out.println("Shared Variable: " + myNode.getSharedVariable());
         } catch (Exception e) { err.println("Error: " + e.getMessage()); }
     }
 
     private void printHelp() {
-        out.println("Commands:");
         out.println("j <host> <port>       - Join network via node");
-        out.println("leave                 - Leave network");
-        out.println("l                     - List known nodes");
+        out.println("l                     - Leave network");
         out.println("req                   - Request critical section");
         out.println("rel                   - Release critical section");
         out.println("v <value>             - Set shared variable");
