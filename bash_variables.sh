@@ -15,18 +15,20 @@ SSH_USER=dsv
 SSH_PASS=dsv
 
 ### 3. NODE DEFINITIONS
-NUM_NODES=3
+NUM_NODES=5
 BASE_PORT=2010
 
 # DEFINE YOUR REAL VM IPS HERE
 NODE_IP[1]=192.168.56.106
 NODE_IP[2]=192.168.56.107
 NODE_IP[3]=192.168.56.108
+NODE_IP[4]=192.168.56.109
+NODE_IP[5]=192.168.56.110
 
 # Auto-calculate ports (RMI Port and REST API Port)
 for I in $(seq 1 $NUM_NODES) ; do
-  # RMI Port (e.g., 2010, 2020)
+  # RMI Port (e.g., 2010)
   NODE_PORT[$I]=$((${BASE_PORT}+(${I}-1)*10))
-  # REST API Port (e.g., 3010, 3020)
+  # REST API Port (e.g., 3010)
   NODE_API_PORT[$I]=$((${NODE_PORT[$I]}+1000))
 done

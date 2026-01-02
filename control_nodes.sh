@@ -2,7 +2,7 @@
 source bash_variables.sh
 
 SLEEP_TIME=2
-echo "   TEST SCENARIO (Using Remote IPs, 3 Nodes)"
+echo "   TEST SCENARIO (Using Remote IPs, 5 Nodes)"
 
 # 1. Topology
 echo "[STEP] Node 2 (${NODE_IP[2]}) joining Node 1 (${NODE_IP[1]})..."
@@ -11,6 +11,14 @@ sleep ${SLEEP_TIME}
 
 echo "[STEP] Node 3 (${NODE_IP[3]}) joining Node 1 (${NODE_IP[1]})..."
 curl -X POST http://${NODE_IP[3]}:${NODE_API_PORT[3]}/join/${NODE_IP[1]}/${NODE_PORT[1]}
+sleep ${SLEEP_TIME}
+
+echo "[STEP] Node 4 (${NODE_IP[4]}) joining Node 1 (${NODE_IP[1]})..."
+curl -X POST http://${NODE_IP[4]}:${NODE_API_PORT[4]}/join/${NODE_IP[1]}/${NODE_PORT[1]}
+sleep ${SLEEP_TIME}
+
+echo "[STEP] Node 5 (${NODE_IP[5]}) joining Node 1 (${NODE_IP[1]})..."
+curl -X POST http://${NODE_IP[5]}:${NODE_API_PORT[5]}/join/${NODE_IP[1]}/${NODE_PORT[1]}
 sleep ${SLEEP_TIME}
 
 # 2. Status
@@ -47,6 +55,12 @@ curl http://${NODE_IP[2]}:${NODE_API_PORT[2]}/var
 echo ""
 echo "Node 3: "
 curl http://${NODE_IP[3]}:${NODE_API_PORT[3]}/var
+echo ""
+echo "Node 4: "
+curl http://${NODE_IP[4]}:${NODE_API_PORT[4]}/var
+echo ""
+echo "Node 5: "
+curl http://${NODE_IP[5]}:${NODE_API_PORT[5]}/var
 echo ""
 
 echo "Test Complete."
