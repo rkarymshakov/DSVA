@@ -46,10 +46,7 @@ public class ConsoleHandler implements Runnable {
                 case "rev":
                     myNode.revive();
                     break;
-                case "gv":
-                    myNode.getSharedVariable();
-                    break;
-                case "sv":
+                case "v":
                     if (parts.length < 2)
                         break;
                     myNode.setSharedVariable(Integer.parseInt(parts[1]));
@@ -98,8 +95,7 @@ public class ConsoleHandler implements Runnable {
         out.println("l                     - List known nodes");
         out.println("req                   - Request critical section");
         out.println("rel                   - Release critical section");
-        out.println("gv                    - Get shared variable");
-        out.println("sv <value>            - Set shared variable");
+        out.println("v <value>             - Set shared variable");
         out.println("s                     - Show node status");
         out.println("c                     - Show logical clock");
         out.println("d <ms>                - Set message delay");
