@@ -206,11 +206,10 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         incrementClock();
         myRequestTimestamp = logicalClock;
-        int requestTimestamp = logicalClock; //TODO: Check if requestTimestamp can be replaced by myRequestTimestamp
         wantCS = true;
-        logger.logInfo("REQUESTING CRITICAL SECTION (My Timestamp: " + requestTimestamp + ")", logicalClock);
+        logger.logInfo("REQUESTING CRITICAL SECTION (My Timestamp: " + myRequestTimestamp + ")", logicalClock);
 
-        Request myReq = new Request(nodeId, requestTimestamp);
+        Request myReq = new Request(nodeId, myRequestTimestamp);
         synchronized (requestQueue) {
             requestQueue.add(myReq);
             logger.logInfo(" Added self to queue: " + requestQueue, logicalClock);
@@ -219,7 +218,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         broadcast((id, node) -> {
             logger.logInfo(" -> Sending REQUEST to node " + id, logicalClock);
-            node.requestCS(nodeId, requestTimestamp);
+            node.requestCS(nodeId, myRequestTimestamp);
         });
         waitForPermission();
 
@@ -236,15 +235,14 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         Request incoming = new Request(requestingNodeId, timestamp);
         synchronized (requestQueue) { requestQueue.add(incoming); }
 
-//        boolean shouldReply;
-//
-//        if (!wantCS) {
-//            shouldReply = true;
-//        } else {
-//            Request myReq = new Request(nodeId, myRequestTimestamp);
-//            shouldReply = incoming.compareTo(myReq) < 0;
-//        }
-        if (true) {
+        boolean shouldReply;
+
+        if (!wantCS)
+            shouldReply = true;
+        else // fixes: 2 nodes in network. d 2000. 1. req 2. req enters both in cs
+            shouldReply = incoming.compareTo(new Request(nodeId, myRequestTimestamp)) < 0;
+
+        if (shouldReply) {
             Node requester = knownNodes.get(requestingNodeId);
             if (requester != null) {
                 try { requester.replyCS(nodeId, logicalClock); }

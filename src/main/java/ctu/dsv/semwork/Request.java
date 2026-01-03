@@ -24,7 +24,7 @@ public class Request implements Serializable, Comparable<Request> {
     @Override
     public int compareTo(Request other) {
         if (this.timestamp != other.timestamp) // Primary sort: Timestamp (Logical Clock)
-            return Integer.compare(this.timestamp, other.timestamp); // Earlier timestamp has higher priority
+            return Integer.compare(this.timestamp, other.timestamp); // Earlier (lower) timestamp has higher priority
         return Long.compare(this.nodeId, other.nodeId); // Secondary sort: Lower node ID has higher priority
     }
 
