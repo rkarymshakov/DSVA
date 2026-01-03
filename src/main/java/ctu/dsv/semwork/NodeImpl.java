@@ -236,15 +236,15 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         Request incoming = new Request(requestingNodeId, timestamp);
         synchronized (requestQueue) { requestQueue.add(incoming); }
 
-        boolean shouldReply;
-
-        if (!wantCS) {
-            shouldReply = true;
-        } else {
-            Request myReq = new Request(nodeId, myRequestTimestamp);
-            shouldReply = incoming.compareTo(myReq) < 0;
-        }
-        if (shouldReply) {
+//        boolean shouldReply;
+//
+//        if (!wantCS) {
+//            shouldReply = true;
+//        } else {
+//            Request myReq = new Request(nodeId, myRequestTimestamp);
+//            shouldReply = incoming.compareTo(myReq) < 0;
+//        }
+        if (true) {
             Node requester = knownNodes.get(requestingNodeId);
             if (requester != null) {
                 try { requester.replyCS(nodeId, logicalClock); }
