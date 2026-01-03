@@ -33,8 +33,8 @@ echo ""
 # 3. Critical Section
 echo -e "\n[STEP] Requesting CS on all nodes..."
 curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/enter-cs &
-curl -s -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/enter-cs &
-curl -s -X POST http://${NODE_IP[3]}:${NODE_API_PORT[3]}/enter-cs &
+#curl -s -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/enter-cs &
+#curl -s -X POST http://${NODE_IP[3]}:${NODE_API_PORT[3]}/enter-cs &
 
 sleep ${SLEEP_TIME}
 

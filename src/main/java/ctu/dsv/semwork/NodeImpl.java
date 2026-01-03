@@ -233,7 +233,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         synchronized (requestQueue) { requestQueue.add(new Request(requestingNodeId, timestamp)); }
 
-        incrementClock();
         Node requester = knownNodes.get(requestingNodeId);
         if (requester != null) {
             try { requester.replyCS(nodeId, logicalClock); }
