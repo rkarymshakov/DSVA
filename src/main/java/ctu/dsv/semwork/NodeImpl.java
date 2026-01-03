@@ -266,6 +266,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void leaveCS() throws RemoteException {
+        ensureAlive();
         if (!inCriticalSection) {
             logger.logError("ERROR: Attempted to leave CS but was not in it.", logicalClock);
             return;
