@@ -26,6 +26,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private boolean inCriticalSection;
     private boolean wantCS = false;
     private boolean isDead = false;
+    private Integer myRequestTimestamp = null;
 
     public NodeImpl(long nodeId) throws RemoteException {
         super();
@@ -204,7 +205,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         ensureAlive();
 
         incrementClock();
-        int requestTimestamp = logicalClock;
+        myRequestTimestamp = logicalClock;
+        int requestTimestamp = logicalClock; //TODO: Check if requestTimestamp can be replaced by myRequestTimestamp
         wantCS = true;
         logger.logInfo("REQUESTING CRITICAL SECTION (My Timestamp: " + requestTimestamp + ")", logicalClock);
 
@@ -231,12 +233,23 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         logger.logInfo("Received REQUEST from " + requestingNodeId + " (ts=" + timestamp + ")", logicalClock);
 
-        synchronized (requestQueue) { requestQueue.add(new Request(requestingNodeId, timestamp)); }
+        Request incoming = new Request(requestingNodeId, timestamp);
+        synchronized (requestQueue) { requestQueue.add(incoming); }
 
-        Node requester = knownNodes.get(requestingNodeId);
-        if (requester != null) {
-            try { requester.replyCS(nodeId, logicalClock); }
-            catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
+        boolean shouldReply;
+
+        if (!wantCS) {
+            shouldReply = true;
+        } else {
+            Request myReq = new Request(nodeId, myRequestTimestamp);
+            shouldReply = incoming.compareTo(myReq) < 0;
+        }
+        if (shouldReply) {
+            Node requester = knownNodes.get(requestingNodeId);
+            if (requester != null) {
+                try { requester.replyCS(nodeId, logicalClock); }
+                catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
+            }
         }
         synchronized (this) { notifyAll(); }
     }
@@ -269,6 +282,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             return;
         }
         inCriticalSection = false;
+        myRequestTimestamp = null;
         wantCS = false;
         incrementClock();
 
