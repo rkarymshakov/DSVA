@@ -57,7 +57,9 @@ public class ConsoleHandler implements Runnable {
                     myNode.detectDeadNodes();
                     break;
                 case "req":
-                    myNode.enterCS();
+                    new Thread(() -> {
+                        try { myNode.enterCS(); } catch (Exception ignored) { }
+                    }).start();
                     break;
                 case "rel":
                     myNode.leaveCS();
