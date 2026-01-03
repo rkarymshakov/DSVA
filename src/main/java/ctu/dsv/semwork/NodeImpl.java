@@ -227,7 +227,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void requestCS(long requestingNodeId, int timestamp) throws RemoteException {
         ensureAlive();
-        simulateDelay();
         updateClock(timestamp);
 
         logger.logInfo("Received REQUEST from " + requestingNodeId + " (ts=" + timestamp + ")", logicalClock);
@@ -245,7 +244,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void replyCS(long replyingNodeId, int timestamp) throws RemoteException {
         ensureAlive();
-        simulateDelay();
         updateClock(timestamp);
 
         repliesReceivedForMyRequest.add(replyingNodeId);
@@ -256,7 +254,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void releaseCS(long releasingNodeId, int timestamp) throws RemoteException {
         ensureAlive();
-        simulateDelay();
         updateClock(timestamp);
 
         logger.logInfo("Received RELEASE from " + releasingNodeId + " (ts=" + timestamp + ")", logicalClock);
@@ -437,8 +434,10 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     protected void broadcast(NodeOperation operation) {
         for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
-            try { operation.execute(entry.getKey(), entry.getValue()); }
-            catch (RemoteException e) { logger.logError("Broadcasting to " + entry.getKey() + " failed (might be dead).", logicalClock); }
+            try {
+                simulateDelay();
+                operation.execute(entry.getKey(), entry.getValue());
+            } catch (RemoteException e) { logger.logError("Broadcasting to " + entry.getKey() + " failed (might be dead).", logicalClock); }
         }
     }
 
