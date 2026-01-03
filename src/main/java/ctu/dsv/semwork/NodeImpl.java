@@ -182,6 +182,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void leave() throws RemoteException {
         if (knownNodes.isEmpty()) return;
 
+        ensureAlive();
         List<Node> nodesToNotify = new ArrayList<>(knownNodes.values());
         knownNodes.clear();
         synchronized (requestQueue) { requestQueue.clear(); }
