@@ -148,6 +148,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             if (waitingNode != null) {
                 try {
                     logger.logInfo("  -> Sending Initial REPLY to " + req.nodeId + " (found in synced queue)", logicalClock);
+                    simulateDelay();
                     waitingNode.replyCS(this.nodeId, this.logicalClock);
                 } catch (RemoteException e) {
                     logger.logError("  Failed to send initial reply to " + req.nodeId, logicalClock);
