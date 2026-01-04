@@ -237,14 +237,15 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         boolean shouldReply;
 
-        if (!wantCS)
-            shouldReply = true;
-        else // fixes: 2 nodes in network. d 2000. 1. req 2. req enters both in cs
-            shouldReply = incoming.compareTo(new Request(nodeId, myRequestTimestamp)) < 0;
+//        if (!wantCS)
+//            shouldReply = true;
+//        else // fixes: 2 nodes in network. d 2000. 1. req 2. req enters both in cs
+//            shouldReply = incoming.compareTo(new Request(nodeId, myRequestTimestamp)) < 0;
 
-        if (shouldReply) {
+        if (true) {
             Node requester = knownNodes.get(requestingNodeId);
             if (requester != null) {
+                simulateDelay();
                 try { requester.replyCS(nodeId, logicalClock); }
                 catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
             }
@@ -297,6 +298,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
                 if (waitingNode != null) {
                     try {
                         logger.logInfo("  -> Sending DEFERRED REPLY to Node " + req.nodeId + " (ts=" + req.timestamp + ")", logicalClock);
+                        simulateDelay();
                         waitingNode.replyCS(nodeId, logicalClock);
                     } catch (RemoteException e) {
                         logger.logError("  Failed to send deferred reply to " + req.nodeId, logicalClock);
