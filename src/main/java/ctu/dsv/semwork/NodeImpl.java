@@ -205,7 +205,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         ensureAlive();
 
         incrementClock();
-        myRequestTimestamp = logicalClock;
+        int myRequestTimestamp = logicalClock;
         wantCS = true;
         logger.logInfo("REQUESTING CRITICAL SECTION (My Timestamp: " + myRequestTimestamp + ")", logicalClock);
 
@@ -285,27 +285,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         wantCS = false;
         incrementClock();
 
-        List<Request> queueSnapshot;
-        synchronized (requestQueue) {
-            queueSnapshot = new ArrayList<>(requestQueue);
-            requestQueue.removeIf(r -> r.nodeId == nodeId);
-        }
+        synchronized (requestQueue) { requestQueue.removeIf(r -> r.nodeId == nodeId); }
 
-        logger.logInfo("Sending deferred replies to " + queueSnapshot.size() + " waiting nodes", logicalClock);
-        for (Request req : queueSnapshot) {
-            if (req.nodeId != nodeId) {
-                Node waitingNode = knownNodes.get(req.nodeId);
-                if (waitingNode != null) {
-                    try {
-                        logger.logInfo("  -> Sending DEFERRED REPLY to Node " + req.nodeId + " (ts=" + req.timestamp + ")", logicalClock);
-                        simulateDelay();
-                        waitingNode.replyCS(nodeId, logicalClock);
-                    } catch (RemoteException e) {
-                        logger.logError("  Failed to send deferred reply to " + req.nodeId, logicalClock);
-                    }
-                }
-            }
-        }
+
 
         broadcast((id, node) -> node.releaseCS(nodeId, logicalClock));
         repliesReceivedForMyRequest.clear();
