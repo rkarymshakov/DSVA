@@ -250,7 +250,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
                 catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
             }
         }
-        synchronized (this) { notifyAll(); }
+        synchronized (this) { notifyAll(); } //todo: when leave network and j back the cs isnt set back to false if was when leaving netowrk was true
     }
 
     @Override
