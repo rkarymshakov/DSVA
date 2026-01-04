@@ -26,7 +26,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private boolean inCriticalSection;
     private boolean wantCS = false;
     private boolean isDead = false;
-    private Integer myRequestTimestamp = null;
 
     public NodeImpl(long nodeId) throws RemoteException {
         super();
@@ -205,11 +204,11 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         ensureAlive();
 
         incrementClock();
-        int myRequestTimestamp = logicalClock;
+        int requestTimestamp = logicalClock;
         wantCS = true;
-        logger.logInfo("REQUESTING CRITICAL SECTION (My Timestamp: " + myRequestTimestamp + ")", logicalClock);
+        logger.logInfo("REQUESTING CRITICAL SECTION (My Timestamp: " + requestTimestamp + ")", logicalClock);
 
-        Request myReq = new Request(nodeId, myRequestTimestamp);
+        Request myReq = new Request(nodeId, requestTimestamp);
         synchronized (requestQueue) {
             requestQueue.add(myReq);
             logger.logInfo(" Added self to queue: " + requestQueue, logicalClock);
@@ -218,7 +217,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         broadcast((id, node) -> {
             logger.logInfo(" -> Sending REQUEST to node " + id, logicalClock);
-            node.requestCS(nodeId, myRequestTimestamp);
+            node.requestCS(nodeId, requestTimestamp);
         });
         waitForPermission();
 
@@ -235,20 +234,11 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         Request incoming = new Request(requestingNodeId, timestamp);
         synchronized (requestQueue) { requestQueue.add(incoming); }
 
-        boolean shouldReply;
-
-//        if (!wantCS)
-//            shouldReply = true;
-//        else // fixes: 2 nodes in network. d 2000. 1. req 2. req enters both in cs
-//            shouldReply = incoming.compareTo(new Request(nodeId, myRequestTimestamp)) < 0;
-
-        if (true) {
-            Node requester = knownNodes.get(requestingNodeId);
-            if (requester != null) {
-                simulateDelay();
-                try { requester.replyCS(nodeId, logicalClock); }
-                catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
-            }
+        Node requester = knownNodes.get(requestingNodeId);
+        if (requester != null) {
+            simulateDelay();
+            try { requester.replyCS(nodeId, logicalClock); }
+            catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
         }
         synchronized (this) { notifyAll(); } //todo: when leave network and j back the cs isnt set back to false if was when leaving netowrk was true
     }
@@ -281,14 +271,10 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             return;
         }
         inCriticalSection = false;
-        myRequestTimestamp = null;
         wantCS = false;
         incrementClock();
 
         synchronized (requestQueue) { requestQueue.removeIf(r -> r.nodeId == nodeId); }
-
-
-
         broadcast((id, node) -> node.releaseCS(nodeId, logicalClock));
         repliesReceivedForMyRequest.clear();
         logger.logInfo("LEFT CRITICAL SECTION", logicalClock);
