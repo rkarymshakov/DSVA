@@ -192,7 +192,10 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         for (Node node : nodesToNotify)
             try { node.removeNode(this.nodeId); } catch (RemoteException ignored) {}
 
+        this.inCriticalSection = false;
+        this.wantCS = false;
         logger.logInfo("Node leaved network.", logicalClock);
+        this.logicalClock = 0;
     }
 
     @Override
