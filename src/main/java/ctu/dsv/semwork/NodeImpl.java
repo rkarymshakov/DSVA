@@ -127,6 +127,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
             processSyncedQueue();
             logger.logInfo("Successfully joined network. Known nodes: " + knownNodes.keySet(), logicalClock);
+            detectDeadNodes();
         } catch (Exception e) {
             logger.logError("Failed to join network: " + e.getMessage(), logicalClock);
         }
@@ -206,6 +207,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void enterCS() throws RemoteException {
         ensureAlive();
+        detectDeadNodes();
 
         incrementClock();
         int requestTimestamp = logicalClock;
