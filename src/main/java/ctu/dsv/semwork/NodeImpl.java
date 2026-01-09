@@ -241,7 +241,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         Node requester = knownNodes.get(requestingNodeId);
         if (requester != null) {
-            simulateDelay();
+//            simulateDelay();
             try { requester.replyCS(nodeId, logicalClock); }
             catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
         }
@@ -251,6 +251,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void replyCS(long replyingNodeId, int timestamp) throws RemoteException {
         ensureAlive();
+        simulateDelay();
         updateClock(timestamp);
 
         repliesReceivedForMyRequest.add(replyingNodeId);
@@ -261,6 +262,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void releaseCS(long releasingNodeId, int timestamp) throws RemoteException {
         ensureAlive();
+        simulateDelay();
         updateClock(timestamp);
 
         logger.logInfo("Received RELEASE from " + releasingNodeId + " (ts=" + timestamp + ")", logicalClock);
