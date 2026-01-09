@@ -221,6 +221,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         broadcast((id, node) -> {
             logger.logInfo(" -> Sending REQUEST to node " + id, logicalClock);
+            simulateDelay();
             node.requestCS(nodeId, requestTimestamp);
         });
         waitForPermission();
@@ -240,7 +241,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         Node requester = knownNodes.get(requestingNodeId);
         if (requester != null) {
-//            simulateDelay();
             try { requester.replyCS(nodeId, logicalClock); }
             catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
         }
@@ -443,7 +443,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     protected void broadcast(NodeOperation operation) {
         for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
             try {
-                simulateDelay();
+//                simulateDelay();
                 operation.execute(entry.getKey(), entry.getValue());
             } catch (RemoteException e) { logger.logError("Broadcasting to " + entry.getKey() + " failed (might be dead).", logicalClock); }
         }
