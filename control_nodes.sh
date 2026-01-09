@@ -62,4 +62,9 @@ echo "Node 5: "
 curl http://${NODE_IP[5]}:${NODE_API_PORT[5]}/var
 echo ""
 
+curl -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/var/1
+curl -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/leave-cs
+
+sleep ${SLEEP_TIME}
+
 echo "Test Complete."
