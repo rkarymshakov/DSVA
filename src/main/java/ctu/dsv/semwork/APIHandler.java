@@ -80,13 +80,17 @@ public class APIHandler {
         });
 
         app.get("/status", ctx -> {
-            String sb = "Node ID: " + node.getNodeId() + "\n" +
-                    "Clock: " + node.getLogicalClock() + "\n" +
-                    "In CS: " + node.isInCriticalSection() + "\n" +
-                    "Queue: " + node.getQueueStatus() + "\n" +
-                    "Known Nodes: " + node.getKnownNodes() + "\n";
+            String sb =
+                "Node ID: " + node.getNodeId() + "\n" +
+                "Clock: " + node.getLogicalClock() + "\n" +
+                "In CS: " + node.isInCriticalSection() + "\n" +
+                "Queue: " + node.getQueueStatus() + "\n" +
+                "Known Nodes: " + node.getKnownNodes() + "\n" +
+                "Message Delay: " + node.getMessageDelayMs() + "ms\n" +
+                "Shared Variable: " + node.getSharedVariable() + "\n";
             ctx.result(sb);
         });
+
     }
 
     public void stop() {
