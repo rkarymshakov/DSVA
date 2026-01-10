@@ -99,7 +99,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     public void joinNetwork(String ip, int port) throws RemoteException {
-        resetLocalState();
+        inCriticalSection = false;
+        wantCS = false;
+        repliesReceivedForMyRequest.clear();
         try {
             Registry registry = LocateRegistry.getRegistry(ip, port);
             Node networkNode = (Node) registry.lookup(String.valueOf(port));
@@ -365,13 +367,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
                 operation.execute(entry.getKey(), entry.getValue());
             } catch (RemoteException e) { logger.logError("Broadcasting to " + entry.getKey() + " failed (might be dead).", logicalClock); }
         }
-    }
-
-    private synchronized void resetLocalState() {
-        inCriticalSection = false;
-        wantCS = false;
-        synchronized (requestQueue) { requestQueue.clear(); }
-        repliesReceivedForMyRequest.clear();
     }
 
     public void shutdown() { logger.close(); }
