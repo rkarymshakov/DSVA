@@ -99,6 +99,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     public void joinNetwork(String ip, int port) throws RemoteException {
+        resetLocalState();
         try {
             Registry registry = LocateRegistry.getRegistry(ip, port);
             Node networkNode = (Node) registry.lookup(String.valueOf(port));
@@ -144,16 +145,10 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         List<Node> nodesToNotify = new ArrayList<>(knownNodes.values());
         knownNodes.clear();
-        requestQueue.clear();
-        repliesReceivedForMyRequest.clear();
 
         for (Node node : nodesToNotify)
             try { node.removeNode(this.nodeId); } catch (RemoteException ignored) {}
-
-        this.inCriticalSection = false;
-        this.wantCS = false;
         logger.logInfo("Node leaved network.", logicalClock);
-        this.logicalClock = 0;
     }
 
     @Override
@@ -284,14 +279,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void revive() throws RemoteException {
         try {
             UnicastRemoteObject.exportObject(this, 0);
-            logger.logInfo("Node re-exported (revived)", logicalClock);
-
-            this.inCriticalSection = false;
-            this.wantCS = false;
-            this.logicalClock = 0;
-            synchronized (requestQueue) { this.requestQueue.clear(); }
-            repliesReceivedForMyRequest.clear();
-
             List<Node> potentialNeighbors = new ArrayList<>(knownNodes.values());
             this.knownNodes.clear();
 
@@ -378,6 +365,13 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
                 operation.execute(entry.getKey(), entry.getValue());
             } catch (RemoteException e) { logger.logError("Broadcasting to " + entry.getKey() + " failed (might be dead).", logicalClock); }
         }
+    }
+
+    private synchronized void resetLocalState() {
+        inCriticalSection = false;
+        wantCS = false;
+        synchronized (requestQueue) { requestQueue.clear(); }
+        repliesReceivedForMyRequest.clear();
     }
 
     public void shutdown() { logger.close(); }
