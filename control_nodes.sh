@@ -21,11 +21,7 @@ curl -X POST http://${NODE_IP[5]}:${NODE_API_PORT[5]}/join/${NODE_IP[1]}/${NODE_
 sleep ${SLEEP_TIME}
 
 echo -e "\n[STEP] Status Check:"
-curl http://${NODE_IP[1]}:${NODE_API_PORT[1]}/status
-echo ""
-curl http://${NODE_IP[2]}:${NODE_API_PORT[2]}/status
-echo ""
-curl http://${NODE_IP[3]}:${NODE_API_PORT[3]}/status
+curl http://${NODE_IP[5]}:${NODE_API_PORT[5]}/status
 echo ""
 
 echo -e "\n[STEP] Requesting CS on all nodes..."
@@ -40,19 +36,7 @@ curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/leave-cs
 
 sleep ${SLEEP_TIME}
 
-echo -e "\n[STEP] Reading shared variable from all nodes:"
-echo "Node 1: "
-curl http://${NODE_IP[1]}:${NODE_API_PORT[1]}/var
-echo ""
-echo "Node 2: "
-curl http://${NODE_IP[2]}:${NODE_API_PORT[2]}/var
-echo ""
-echo "Node 3: "
-curl http://${NODE_IP[3]}:${NODE_API_PORT[3]}/var
-echo ""
-echo "Node 4: "
-curl http://${NODE_IP[4]}:${NODE_API_PORT[4]}/var
-echo ""
+echo -e "\n[STEP] Reading shared variable from 5. nodes:"
 echo "Node 5: "
 curl http://${NODE_IP[5]}:${NODE_API_PORT[5]}/var
 echo ""
