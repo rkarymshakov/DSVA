@@ -86,15 +86,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         } catch (RemoteException e) {
             logger.logError("Error syncing var to new node: " + e.getMessage(), logicalClock);
         }
-
-        try {
-            List<Request> currentQueue;
-            synchronized (requestQueue) { currentQueue = new ArrayList<>(requestQueue); }
-            joiningNodeRef.syncQueue(currentQueue);
-        } catch (RemoteException e) {
-            logger.logError("Error syncing queue to new node: " + e.getMessage(), logicalClock);
-        }
-
         for (Map.Entry<Long, Node> entry : currentTopology.entrySet()) {
             if (entry.getKey() != nodeId && entry.getKey() != joiningNodeId) {
                 try {
@@ -120,34 +111,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
                 if (entry.getKey() != this.nodeId)
                     this.addNode(entry.getKey(), entry.getValue());
 
-            processSyncedQueue();
             logger.logInfo("Successfully joined network. Known nodes: " + knownNodes.keySet(), logicalClock);
         } catch (Exception e) {
             logger.logError("Failed to join network: " + e.getMessage(), logicalClock);
-        }
-    }
-
-    private void processSyncedQueue() {
-        List<Request> snapshot;
-        synchronized (requestQueue) {
-            snapshot = new ArrayList<>(requestQueue);
-        }
-        if (snapshot.isEmpty()) return;
-
-        logger.logInfo("Processing synced queue (size " + snapshot.size() + ") to unblock waiting nodes...", logicalClock);
-
-        for (Request req : snapshot) {
-            if (req.nodeId == this.nodeId) continue;
-
-            Node waitingNode = knownNodes.get(req.nodeId);
-            if (waitingNode != null) {
-                try {
-                    logger.logInfo("  -> Sending Initial REPLY to " + req.nodeId + " (found in synced queue)", logicalClock);
-                    waitingNode.replyCS(this.nodeId, this.logicalClock);
-                } catch (RemoteException e) {
-                    logger.logError("  Failed to send initial reply to " + req.nodeId, logicalClock);
-                }
-            }
         }
     }
 
@@ -178,7 +144,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         List<Node> nodesToNotify = new ArrayList<>(knownNodes.values());
         knownNodes.clear();
-        synchronized (requestQueue) { requestQueue.clear(); }
+        requestQueue.clear();
         repliesReceivedForMyRequest.clear();
 
         for (Node node : nodesToNotify)
@@ -342,15 +308,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         } catch (Exception e) {
             logger.logError("Failed to revive: " + e.getMessage(), logicalClock);
         }
-    }
-
-    @Override
-    public void syncQueue(List<Request> queueState) throws RemoteException {
-        synchronized (requestQueue) {
-            requestQueue.clear();
-            requestQueue.addAll(queueState);
-        }
-        logger.logInfo("Synced request queue (Size: " + requestQueue.size() + ")", logicalClock);
     }
 
     @Override

@@ -104,12 +104,6 @@ public interface Node extends Remote {
     /** Revives a previously killed node and reconnects it to the network. */
     void revive() throws RemoteException;
 
-    /**
-     * Synchronizes this node's request queue with a given list of requests from another node.
-     * @param queueState The list of requests to sync.
-     */
-    void syncQueue(List<Request> queueState) throws RemoteException;
-
     /** Returns true if the node is currently in the critical section. */
     boolean isInCriticalSection() throws RemoteException;
 
