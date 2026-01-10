@@ -10,13 +10,10 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class NodeImpl extends UnicastRemoteObject implements Node {
-    private static final int PING_TIMEOUT_MS = 3000;
-
     private final long nodeId;
     private final Map<Long, Node> knownNodes;
     private final Set<Long> repliesReceivedForMyRequest = new HashSet<>();
     private final PriorityQueue<Request> requestQueue;
-    private final ExecutorService failureDetectionExecutor = Executors.newCachedThreadPool();  // Executor for handling async pings (avoids freezing the main thread)
     private final Logger logger;
     private final FileWriter logWriter;
 
@@ -25,7 +22,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private int messageDelayMs;
     private boolean inCriticalSection;
     private boolean wantCS = false;
-    private boolean isDead = false;
 
     public NodeImpl(long nodeId) throws RemoteException {
         super();
@@ -78,7 +74,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public Map<Long, Node> join(long joiningNodeId, Node joiningNodeRef) throws RemoteException {
-        ensureAlive();
         logger.logInfo("Node " + joiningNodeId + " is joining the network", logicalClock);
 
         Map<Long, Node> currentTopology = new HashMap<>(knownNodes);
@@ -158,7 +153,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void addNode(long otherNodeId, Node nodeRef) throws RemoteException {
-        ensureAlive();
         incrementClock();
         knownNodes.put(otherNodeId, nodeRef);
         logger.logInfo("Added node " + otherNodeId + " (Total: " + knownNodes.size() + ")", logicalClock);
@@ -182,7 +176,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void leave() throws RemoteException {
         if (knownNodes.isEmpty()) return;
 
-        ensureAlive();
         List<Node> nodesToNotify = new ArrayList<>(knownNodes.values());
         knownNodes.clear();
         synchronized (requestQueue) { requestQueue.clear(); }
@@ -204,7 +197,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void enterCS() throws RemoteException {
-        ensureAlive();
         detectDeadNodes();
 
         incrementClock();
@@ -231,7 +223,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void requestCS(long requestingNodeId, int timestamp) throws RemoteException {
-        ensureAlive();
         updateClock(timestamp);
 
         logger.logInfo("Received REQUEST from " + requestingNodeId + " (ts=" + timestamp + ")", logicalClock);
@@ -249,7 +240,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void replyCS(long replyingNodeId, int timestamp) throws RemoteException {
-        ensureAlive();
         simulateDelay();
         updateClock(timestamp);
 
@@ -260,7 +250,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void releaseCS(long releasingNodeId, int timestamp) throws RemoteException {
-        ensureAlive();
         simulateDelay();
         updateClock(timestamp);
 
@@ -271,7 +260,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void leaveCS() throws RemoteException {
-        ensureAlive();
         if (!inCriticalSection) {
             logger.logError("ERROR: Attempted to leave CS but was not in it.", logicalClock);
             return;
@@ -288,13 +276,11 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public synchronized int getSharedVariable() throws RemoteException {
-        ensureAlive();
         return sharedVariable;
     }
 
     @Override
     public synchronized void setSharedVariable(int value) throws RemoteException {
-        ensureAlive();
         if (!inCriticalSection)
             throw new RemoteException("Illegal Access: Must be in Critical Section to write variable!");
 
@@ -306,7 +292,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public synchronized void updateSharedVariable(int value, int timestamp, long sourceNodeId) throws RemoteException {
-        ensureAlive();
         updateClock(timestamp);
         this.sharedVariable = value;
         logger.logInfo("Updated Shared Variable in Node " + sourceNodeId + " to " + value, logicalClock);
@@ -320,37 +305,47 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void kill() throws RemoteException {
-        this.isDead = true;
-        logger.logInfo("SIMULATION: Node KILLED", logicalClock);
+        logger.logInfo("KILLING NODE - unexport RMI object", logicalClock);
+        try {
+            UnicastRemoteObject.unexportObject(this, true);
+            logger.logInfo("Node unexported successfully", logicalClock);
+        } catch (Exception e) {
+            logger.logError("Failed to unexport: " + e.getMessage(), logicalClock);
+        }
     }
 
     @Override
     public void revive() throws RemoteException {
-        this.isDead = false;
-        this.inCriticalSection = false;
-        this.wantCS = false;
-        this.logicalClock = 0;
-        synchronized (requestQueue) { this.requestQueue.clear(); }
-        repliesReceivedForMyRequest.clear();
+        try {
+            UnicastRemoteObject.exportObject(this, 0);
+            logger.logInfo("Node re-exported (revived)", logicalClock);
 
-        List<Node> potentialNeighbors = new ArrayList<>(knownNodes.values());
-        this.knownNodes.clear();
+            this.inCriticalSection = false;
+            this.wantCS = false;
+            this.logicalClock = 0;
+            synchronized (requestQueue) { this.requestQueue.clear(); }
+            repliesReceivedForMyRequest.clear();
 
-        for (Node neighbor : potentialNeighbors) {
-            try {
-                Map<Long, Node> freshTopology = neighbor.join(this.nodeId, this);
-                this.knownNodes.putAll(freshTopology);
-                this.knownNodes.remove(this.nodeId);
-                logger.logInfo("Node REVIVED", logicalClock);
-                return;
-            } catch (RemoteException ignored) {}
+            List<Node> potentialNeighbors = new ArrayList<>(knownNodes.values());
+            this.knownNodes.clear();
+
+            for (Node neighbor : potentialNeighbors) {
+                try {
+                    Map<Long, Node> freshTopology = neighbor.join(this.nodeId, this);
+                    this.knownNodes.putAll(freshTopology);
+                    this.knownNodes.remove(this.nodeId);
+                    logger.logInfo("Node REVIVED and rejoined network", logicalClock);
+                    return;
+                } catch (RemoteException ignored) {}
+            }
+            logger.logError("Revive: re-exported but no neighbors reachable", logicalClock);
+        } catch (Exception e) {
+            logger.logError("Failed to revive: " + e.getMessage(), logicalClock);
         }
-        logger.logError("Revive failed: No reachable neighbors found.", logicalClock);
     }
 
     @Override
     public void syncQueue(List<Request> queueState) throws RemoteException {
-        ensureAlive();
         synchronized (requestQueue) {
             requestQueue.clear();
             requestQueue.addAll(queueState);
@@ -365,16 +360,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public String getQueueStatus() throws RemoteException { synchronized (requestQueue) { return requestQueue.toString(); } }
 
     @Override
-    public void ensureAlive() throws RemoteException {
-        if (isDead) {
-            try { Thread.sleep(PING_TIMEOUT_MS * 2); } catch (InterruptedException ignored) {}
-            throw new RemoteException("Node is dead");
-        }
-    }
-
-    @Override
     public void detectDeadNodes() throws RemoteException {
-        ensureAlive();
         logger.logInfo("Starting failure detection scan...", logicalClock);
         List<Long> deadNodes = new ArrayList<>();
 
@@ -382,18 +368,20 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             Node neighborRef = knownNodes.get(neighborId);
             if (neighborRef == null) continue;
 
-            if (!isNodeReachable(neighborId, neighborRef)) {
-                logger.logInfo("TIMEOUT/FAILURE: Node " + neighborId + " is unreachable.", logicalClock);
+            try {
+                neighborRef.getNodeId();
+            } catch (RemoteException e) {
+                logger.logInfo("Node " + neighborId + " is unreachable (dead).", logicalClock);
                 deadNodes.add(neighborId);
             }
         }
-        for (Long deadId : deadNodes) { handleDeadNode(deadId); }
+        for (Long deadId : deadNodes)
+            handleDeadNode(deadId);
     }
 
     @Override
     public void notifyNodeDead(long deadNodeId) throws RemoteException {
-        ensureAlive();
-        logger.logInfo("Received notification: Node " + deadNodeId + " is dead/gone.", logicalClock);
+        logger.logInfo("Received notification: Node " + deadNodeId + " is dead.", logicalClock);
         removeNode(deadNodeId);
     }
 
@@ -404,26 +392,12 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     private synchronized boolean canEnterCS() {
-        if (!wantCS || isDead) return false;
+        if (!wantCS) return false;
         synchronized (requestQueue) {
             if (requestQueue.isEmpty() || requestQueue.peek().nodeId != nodeId)
                 return false;
         }
         return repliesReceivedForMyRequest.size() == knownNodes.size();
-    }
-
-    private boolean isNodeReachable(long neighborId, Node neighbor) {
-        Future<Boolean> future = failureDetectionExecutor.submit(() -> {
-            try { neighbor.ensureAlive(); return true; }
-            catch (RemoteException e) { return false; }
-        });
-
-        try { return future.get(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS); }
-        catch (TimeoutException e) {
-            logger.logInfo("  -> Node " + neighborId + " did not reply within " + PING_TIMEOUT_MS + "ms.", logicalClock);
-            future.cancel(true);
-            return false;
-        } catch (InterruptedException | ExecutionException e) { return false; }
     }
 
     private void handleDeadNode(long deadId) {

@@ -116,9 +116,6 @@ public interface Node extends Remote {
     /** Returns a string representation of the current request queue. */
     String getQueueStatus() throws RemoteException;
 
-    /** Checks if the node is alive; throws RemoteException if it is killed. */
-    void ensureAlive() throws RemoteException;
-
     /** Detects dead/unresponsive nodes in the network and handles their removal. */
     void detectDeadNodes() throws RemoteException;
 
