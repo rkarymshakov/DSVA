@@ -195,6 +195,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         Node requester = knownNodes.get(requestingNodeId);
         if (requester != null) {
+            simulateDelay();
             try { requester.replyCS(nodeId, logicalClock); }
             catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
         }
@@ -203,7 +204,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void replyCS(long replyingNodeId, int timestamp) throws RemoteException {
-        simulateDelay();
         updateClock(timestamp);
 
         repliesReceivedForMyRequest.add(replyingNodeId);
@@ -213,7 +213,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void releaseCS(long releasingNodeId, int timestamp) throws RemoteException {
-        simulateDelay();
         updateClock(timestamp);
 
         logger.logInfo("Received RELEASE from " + releasingNodeId + " (ts=" + timestamp + ")", logicalClock);
@@ -232,7 +231,10 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         incrementClock();
 
         synchronized (requestQueue) { requestQueue.removeIf(r -> r.nodeId == nodeId); }
-        broadcast((id, node) -> node.releaseCS(nodeId, logicalClock));
+        broadcast((id, node) -> {
+            simulateDelay();
+            node.releaseCS(nodeId, logicalClock);
+        });
         repliesReceivedForMyRequest.clear();
         logger.logInfo("LEFT CRITICAL SECTION", logicalClock);
     }
@@ -363,7 +365,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     protected void broadcast(NodeOperation operation) {
         for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
             try {
-//                simulateDelay();
                 operation.execute(entry.getKey(), entry.getValue());
             } catch (RemoteException e) { logger.logError("Broadcasting to " + entry.getKey() + " failed (might be dead).", logicalClock); }
         }
