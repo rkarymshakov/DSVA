@@ -70,7 +70,7 @@ chmod +x *.sh
 ./start_nodes.sh
 
 # Run test scenario
-./control_nodes.sh
+./1test.sh
 ```
 
 ### Attach to Running Node
@@ -153,7 +153,7 @@ curl -X POST http://localhost:3010/leave-cs
 ### Automated Test
 
 ```bash
-./control_nodes.sh
+./1test.sh
 ```
 
 ### Manual Test Example
@@ -253,5 +253,7 @@ DSVA/
 ├── pom.xml
 ├── bash_variables.sh            # Deployment config
 ├── start_nodes.sh               # Deployment script
-└── control_nodes.sh             # Test script
+├── 1test.sh             # Test script with topology setting up, without delay
+├── 2test.sh             # Test script without topology, without delay
+├── 3test.sh             # Test script without topology, with delay
 ```
