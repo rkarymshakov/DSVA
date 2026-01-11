@@ -60,7 +60,8 @@ public class APIHandler {
         app.post("/enter-cs", ctx -> {
             new Thread(() -> {
                 try {
-                    node.enterCS();
+                    int timestamp = node.enterCS();
+                    System.out.println("Node entered CS with Request Timestamp: " + timestamp);
                 } catch (Exception e) {
                     System.err.println("Error entering CS: " + e.getMessage());
                     e.printStackTrace();

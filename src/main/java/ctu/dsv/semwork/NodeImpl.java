@@ -160,7 +160,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     @Override
-    public void enterCS() throws RemoteException {
+    public int enterCS() throws RemoteException {
         detectDeadNodes();
 
         incrementClock();
@@ -183,6 +183,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         waitForPermission();
         logger.logInfo("ENTERED CRITICAL SECTION", logicalClock);
+        return requestTimestamp;
     }
 
     @Override
