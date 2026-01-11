@@ -174,7 +174,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             logger.logInfo(" Added self to queue: " + requestQueue, logicalClock);
         }
         repliesReceivedForMyRequest.clear();
-
+        simulateDelay();
         broadcast((id, node) -> {
             logger.logInfo(" -> Sending REQUEST to node " + id, logicalClock);
             node.requestCS(nodeId, requestTimestamp);
@@ -186,7 +186,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void requestCS(long requestingNodeId, int timestamp) throws RemoteException {
-        simulateDelay();
         updateClock(timestamp);
 
         logger.logInfo("Received REQUEST from " + requestingNodeId + " (ts=" + timestamp + ")", logicalClock);
@@ -196,6 +195,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         Node requester = knownNodes.get(requestingNodeId);
         if (requester != null) {
+            simulateDelay();
             try { requester.replyCS(nodeId, logicalClock); }
             catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
         }
@@ -234,9 +234,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             requestQueue.remove(myRequest);
         }
         myRequest = null;
-
+        simulateDelay();
         broadcast((id, node) -> {
-            simulateDelay();
             node.releaseCS(nodeId, logicalClock);
         });
         repliesReceivedForMyRequest.clear();
