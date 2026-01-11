@@ -58,7 +58,11 @@ public class ConsoleHandler implements Runnable {
                     break;
                 case "req":
                     new Thread(() -> {
-                        try { myNode.enterCS(); } catch (Exception ignored) { }
+                        try {
+                            myNode.enterCS();
+                        } catch (Exception e) {
+                            myNode.logExternalException("Manual Console Request Failed", e);
+                        }
                     }).start();
                     break;
                 case "rel":
@@ -113,7 +117,6 @@ public class ConsoleHandler implements Runnable {
                 out.print("[Node " + myNode.getNodeId() + "]> ");
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
-
             }
             try {
                 commandline = reader.readLine();

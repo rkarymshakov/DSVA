@@ -379,8 +379,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             Thread t = new Thread(() -> {
                 try {
                     operation.execute(entry.getKey(), entry.getValue());
-                } catch (RemoteException e) {
-                    logger.logError("Broadcasting to " + entry.getKey() + " failed (might be dead).", logicalClock);
+                } catch (Exception e) {
+                    logger.logException("Broadcasting to " + entry.getKey() + " failed", e, logicalClock);
                 }
             });
             t.start();
