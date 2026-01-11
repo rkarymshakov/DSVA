@@ -175,7 +175,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         }
         repliesReceivedForMyRequest.clear();
 
-        broadcastParallel((id, node) -> {
+        broadcast((id, node) -> {
             simulateDelay();
             logger.logInfo(" -> Sending REQUEST to node " + id, logicalClock);
             node.requestCS(nodeId, requestTimestamp);
@@ -235,7 +235,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         }
         myRequest = null;
 
-        broadcastParallel((id, node) -> {
+        broadcast((id, node) -> {
             simulateDelay();
             node.releaseCS(nodeId, logicalClock);
         });
@@ -256,7 +256,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         incrementClock();
         this.sharedVariable = value;
         logger.logInfo("Wrote shared variable: " + value, logicalClock);
-        broadcastParallel((id, node) -> node.updateSharedVariable(value, logicalClock, nodeId));
+        broadcast((id, node) -> node.updateSharedVariable(value, logicalClock, nodeId));
     }
 
     @Override
@@ -361,7 +361,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     private void handleDeadNode(long deadId) {
         try { removeNode(deadId); } catch (RemoteException ignored) {}
-        broadcastParallel((id, node) -> node.notifyNodeDead(deadId));
+        broadcast((id, node) -> node.notifyNodeDead(deadId));
     }
 
     private synchronized void incrementClock() { logicalClock++; }
@@ -374,16 +374,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     protected void broadcast(NodeOperation operation) {
-        for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
-            try {
-                operation.execute(entry.getKey(), entry.getValue());
-            } catch (RemoteException e) { logger.logError("Broadcasting to " + entry.getKey() + " failed (might be dead).", logicalClock); }
-        }
-    }
-
-    protected void broadcastParallel(NodeOperation operation) {
         List<Thread> threads = new ArrayList<>();
-
         for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
             Thread t = new Thread(() -> {
                 try {
@@ -395,8 +386,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             t.start();
             threads.add(t);
         }
-
-        // Wait for all messages to be sent
         for (Thread t : threads) {
             try {
                 t.join();
