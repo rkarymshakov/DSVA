@@ -185,100 +185,38 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @Override
     public void requestCS(long requestingNodeId, int timestamp) throws RemoteException {
-        // Don't block here - schedule delayed processing instead
-        if (messageDelayMs > 0) {
-            // Schedule async processing with delay
-            new Thread(() -> {
-                try {
-                    Thread.sleep(messageDelayMs);
-                    processRequestCS(requestingNodeId, timestamp);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }).start();
-        } else {
-            // No delay - process immediately
-            processRequestCS(requestingNodeId, timestamp);
-        }
-    }
-
-    private void processRequestCS(long requestingNodeId, int timestamp) {
+        simulateDelay();
         updateClock(timestamp);
+
         logger.logInfo("Received REQUEST from " + requestingNodeId + " (ts=" + timestamp + ")", logicalClock);
 
         Request incoming = new Request(requestingNodeId, timestamp);
-        synchronized (requestQueue) {
-            requestQueue.add(incoming);
-            logger.logInfo("  Queue after adding: " + requestQueue, logicalClock);
-        }
+        synchronized (requestQueue) { requestQueue.add(incoming); }
 
         Node requester = knownNodes.get(requestingNodeId);
         if (requester != null) {
-            try {
-                requester.replyCS(nodeId, logicalClock);
-                logger.logInfo("  -> Sent REPLY to " + requestingNodeId, logicalClock);
-            } catch (RemoteException e) {
-                logger.logError("  Failed to reply to " + requestingNodeId, logicalClock);
-            }
+            try { requester.replyCS(nodeId, logicalClock); }
+            catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
         }
-
-        synchronized (this) {
-            notifyAll();
-        }
+        synchronized (this) { notifyAll(); }
     }
 
     @Override
     public void replyCS(long replyingNodeId, int timestamp) throws RemoteException {
-        if (messageDelayMs > 0) {
-            new Thread(() -> {
-                try {
-                    Thread.sleep(messageDelayMs);
-                    processReplyCS(replyingNodeId, timestamp);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }).start();
-        } else {
-            processReplyCS(replyingNodeId, timestamp);
-        }
-    }
+        updateClock(timestamp);
 
-    private void processReplyCS(long replyingNodeId, int timestamp) {
-        try {
-            updateClock(timestamp);
-            repliesReceivedForMyRequest.add(replyingNodeId);
-            logger.logInfo("Received REPLY from " + replyingNodeId + " (ts=" + timestamp + ")", logicalClock);
-            synchronized (this) { notifyAll(); }
-        } catch (Exception e) {
-            logger.logError("Error processing reply: " + e.getMessage(), logicalClock);
-        }
+        repliesReceivedForMyRequest.add(replyingNodeId);
+        logger.logInfo("Received REPLY from " + replyingNodeId + " (ts=" + timestamp + ")", logicalClock);
+        synchronized (this) { notifyAll(); }
     }
 
     @Override
     public void releaseCS(long releasingNodeId, int timestamp) throws RemoteException {
-        if (messageDelayMs > 0) {
-            new Thread(() -> {
-                try {
-                    Thread.sleep(messageDelayMs);
-                    processReleaseCS(releasingNodeId, timestamp);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }).start();
-        } else {
-            processReleaseCS(releasingNodeId, timestamp);
-        }
-    }
+        updateClock(timestamp);
 
-    private void processReleaseCS(long releasingNodeId, int timestamp) {
-        try {
-            updateClock(timestamp);
-            logger.logInfo("Received RELEASE from " + releasingNodeId + " (ts=" + timestamp + ")", logicalClock);
-            synchronized (requestQueue) { requestQueue.removeIf(r -> r.nodeId == releasingNodeId); }
-            synchronized (this) { notifyAll(); }
-        } catch (Exception e) {
-            logger.logError("Error processing release: " + e.getMessage(), logicalClock);
-        }
+        logger.logInfo("Received RELEASE from " + releasingNodeId + " (ts=" + timestamp + ")", logicalClock);
+        synchronized (requestQueue) { requestQueue.removeIf(r -> r.nodeId == releasingNodeId); }
+        synchronized (this) { notifyAll(); }
     }
 
     @Override
