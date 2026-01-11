@@ -5,7 +5,7 @@ SLEEP_TIME=1
 echo "   Test without topology, with delay (Using Remote IPs, 5 Nodes)"
 
 echo "[STEP] Setting 2s message delay on Node 1..."
-curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/delay/5000
+curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/delay/1000
 sleep ${SLEEP_TIME}
 
 echo -e "\n[STEP] Status Check:"
