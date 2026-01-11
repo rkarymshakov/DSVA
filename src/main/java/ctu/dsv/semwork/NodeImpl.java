@@ -181,7 +181,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             node.requestCS(nodeId, requestTimestamp);
         });
         waitForPermission();
-        logger.logInfo("ENTERED CRITICAL SECTION with timestamp:" + requestTimestamp, logicalClock);
+        logger.logInfo("ENTERED CRITICAL SECTION with timestamp: " + requestTimestamp, logicalClock);
     }
 
     @Override
