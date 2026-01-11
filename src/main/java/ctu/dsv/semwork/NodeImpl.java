@@ -174,13 +174,14 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             logger.logInfo(" Added self to queue: " + requestQueue, logicalClock);
         }
         repliesReceivedForMyRequest.clear();
-        simulateDelay();
-        broadcast((id, node) -> {
+
+        broadcastParallel((id, node) -> {
+            simulateDelay();
             logger.logInfo(" -> Sending REQUEST to node " + id, logicalClock);
             node.requestCS(nodeId, requestTimestamp);
         });
-        waitForPermission();
 
+        waitForPermission();
         logger.logInfo("ENTERED CRITICAL SECTION", logicalClock);
     }
 
@@ -234,8 +235,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             requestQueue.remove(myRequest);
         }
         myRequest = null;
-        simulateDelay();
-        broadcast((id, node) -> {
+
+        broadcastParallel((id, node) -> {
+            simulateDelay();
             node.releaseCS(nodeId, logicalClock);
         });
         repliesReceivedForMyRequest.clear();
@@ -255,7 +257,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         incrementClock();
         this.sharedVariable = value;
         logger.logInfo("Wrote shared variable: " + value, logicalClock);
-        broadcast((id, node) -> node.updateSharedVariable(value, logicalClock, nodeId));
+        broadcastParallel((id, node) -> node.updateSharedVariable(value, logicalClock, nodeId));
     }
 
     @Override
@@ -360,7 +362,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     private void handleDeadNode(long deadId) {
         try { removeNode(deadId); } catch (RemoteException ignored) {}
-        broadcast((id, node) -> node.notifyNodeDead(deadId));
+        broadcastParallel((id, node) -> node.notifyNodeDead(deadId));
     }
 
     private synchronized void incrementClock() { logicalClock++; }
@@ -379,6 +381,32 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             } catch (RemoteException e) { logger.logError("Broadcasting to " + entry.getKey() + " failed (might be dead).", logicalClock); }
         }
     }
+
+    protected void broadcastParallel(NodeOperation operation) {
+        List<Thread> threads = new ArrayList<>();
+
+        for (Map.Entry<Long, Node> entry : knownNodes.entrySet()) {
+            Thread t = new Thread(() -> {
+                try {
+                    operation.execute(entry.getKey(), entry.getValue());
+                } catch (RemoteException e) {
+                    logger.logError("Broadcasting to " + entry.getKey() + " failed (might be dead).", logicalClock);
+                }
+            });
+            t.start();
+            threads.add(t);
+        }
+
+        // Wait for all messages to be sent
+        for (Thread t : threads) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
 
     public void shutdown() { logger.close(); }
 
