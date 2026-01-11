@@ -60,14 +60,12 @@ public class APIHandler {
         app.post("/enter-cs", ctx -> {
             new Thread(() -> {
                 try {
-                    int timestamp = node.enterCS();
-                    System.out.println("Node entered CS with Request Timestamp: " + timestamp);
+                    node.enterCS();
                 } catch (Exception e) {
                     System.err.println("Error entering CS: " + e.getMessage());
                     e.printStackTrace();
                 }
             }).start();
-
             ctx.result("CS entry request submitted (async)");
         });
 

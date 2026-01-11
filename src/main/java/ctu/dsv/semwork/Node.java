@@ -45,8 +45,8 @@ public interface Node extends Remote {
     /** Returns a list of IDs for all currently known nodes. */
     List<Long> getKnownNodes() throws RemoteException;
 
-    /** Requests entry into the critical section. */
-    int enterCS() throws RemoteException;
+    /** Requests entry into the critical section (Lamport mutual exclusion). */
+    void enterCS() throws RemoteException;
 
     /**
      * Handles a request from another node to enter the critical section.
