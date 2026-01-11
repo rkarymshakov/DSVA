@@ -2,7 +2,7 @@
 source bash_variables.sh
 
 SLEEP_TIME=1
-echo "   TEST SCENARIO (Using Remote IPs, 5 Nodes)"
+echo "   Test with topology setting up, without delay (Using Remote IPs, 5 Nodes)"
 
 echo "[STEP] Node 2 (${NODE_IP[2]}) joining Node 1 (${NODE_IP[1]})..."
 curl -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/join/${NODE_IP[1]}/${NODE_PORT[1]}
