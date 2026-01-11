@@ -1,7 +1,7 @@
 #!/bin/bash
 source bash_variables.sh
 
-SLEEP_TIME=2
+SLEEP_TIME=1
 echo "   TEST SCENARIO (Using Remote IPs, 5 Nodes)"
 
 echo "[STEP] Node 2 (${NODE_IP[2]}) joining Node 1 (${NODE_IP[1]})..."

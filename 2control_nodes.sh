@@ -1,7 +1,7 @@
 #!/bin/bash
 source bash_variables.sh
 
-SLEEP_TIME=2
+SLEEP_TIME=1
 echo "   TEST SCENARIO (Using Remote IPs, 5 Nodes)"
 
 echo -e "\n[STEP] Status Check:"
