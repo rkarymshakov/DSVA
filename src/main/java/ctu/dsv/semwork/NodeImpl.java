@@ -395,7 +395,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         }
     }
 
-
     public void shutdown() { logger.close(); }
 
     @FunctionalInterface
