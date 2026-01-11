@@ -58,12 +58,16 @@ public class APIHandler {
         });
 
         app.post("/enter-cs", ctx -> {
-            try { // run this in a blocking way so the HTTP response confirms entry
-                node.enterCS();
-                ctx.result("Entered Critical Section");
-            } catch (Exception e) {
-                ctx.status(500).result("Error entering CS: " + e.getMessage());
-            }
+            new Thread(() -> {
+                try {
+                    node.enterCS();
+                } catch (Exception e) {
+                    System.err.println("Error entering CS: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }).start();
+
+            ctx.result("CS entry request submitted (async)");
         });
 
         app.post("/leave-cs", ctx -> {
