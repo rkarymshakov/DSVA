@@ -399,4 +399,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
     @FunctionalInterface
     protected interface NodeOperation { void execute(long nodeId, Node node) throws RemoteException; }
+
+    public void logExternalException(String context, Exception e) {
+        logger.logException(context, e, logicalClock);
+    }
 }

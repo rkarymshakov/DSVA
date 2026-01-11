@@ -2,6 +2,8 @@ package ctu.dsv.semwork;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -23,6 +25,14 @@ public class Logger {
         log(message, logicalClock, true);
     }
 
+    public void logException(String message, Throwable e, int logicalClock) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
+        String fullDetails = message + " | Exception: " + e + "\n" + sw;
+        log(fullDetails, logicalClock, true);
+    }
+
     private void log(String message, int logicalClock, boolean isError) {
         String timestamp = LocalDateTime.now().format(timeFormatter);
         String logLine = String.format("[%s][LC=%d][Node %d] %s", timestamp, logicalClock, nodeId, message);
@@ -32,8 +42,10 @@ public class Logger {
 
         if (logWriter != null) {
             try {
-                logWriter.write(logLine + "\n");
-                logWriter.flush();
+                synchronized (logWriter) {
+                    logWriter.write(logLine + "\n");
+                    logWriter.flush();
+                }
             } catch (IOException ignored) {}
         }
     }

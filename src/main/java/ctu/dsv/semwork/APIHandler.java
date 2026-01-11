@@ -27,6 +27,7 @@ public class APIHandler {
                 node.joinNetwork(ip, targetPort);
                 ctx.result("Joined network via " + ip + ":" + targetPort + "\n");
             } catch (Exception e) {
+                node.logExternalException("API Join Failed", e);
                 ctx.status(500).result("Join failed: " + e.getMessage());
             }
         });
@@ -62,8 +63,7 @@ public class APIHandler {
                 try {
                     node.enterCS();
                 } catch (Exception e) {
-                    System.err.println("Error entering CS: " + e.getMessage());
-                    e.printStackTrace();
+                    node.logExternalException("Async API Error in /enter-cs", e);
                 }
             }).start();
             ctx.result("CS entry request submitted (async)");
@@ -93,7 +93,6 @@ public class APIHandler {
                 "Shared Variable: " + node.getSharedVariable() + "\n";
             ctx.result(sb);
         });
-
     }
 
     public void stop() {
