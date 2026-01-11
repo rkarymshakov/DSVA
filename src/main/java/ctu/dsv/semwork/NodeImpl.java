@@ -22,6 +22,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private int messageDelayMs;
     private boolean inCriticalSection;
     private boolean wantCS = false;
+    private Request myRequest;
 
     public NodeImpl(long nodeId) throws RemoteException {
         super();
@@ -167,9 +168,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         wantCS = true;
         logger.logInfo("REQUESTING CRITICAL SECTION (My Timestamp: " + requestTimestamp + ")", logicalClock);
 
-        Request myReq = new Request(nodeId, requestTimestamp);
+        myRequest = new Request(nodeId, requestTimestamp);
         synchronized (requestQueue) {
-            requestQueue.add(myReq);
+            requestQueue.add(myRequest);
             logger.logInfo(" Added self to queue: " + requestQueue, logicalClock);
         }
         repliesReceivedForMyRequest.clear();
@@ -229,7 +230,11 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         wantCS = false;
         incrementClock();
 
-        synchronized (requestQueue) { requestQueue.removeIf(r -> r.nodeId == nodeId); }
+        synchronized (requestQueue) {
+            requestQueue.remove(myRequest);
+        }
+        myRequest = null;
+
         broadcast((id, node) -> {
             simulateDelay();
             node.releaseCS(nodeId, logicalClock);
@@ -339,9 +344,16 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     private synchronized boolean canEnterCS() {
-        if (!wantCS) return false;
+        if (!wantCS || myRequest == null)
+            return false;
+
         synchronized (requestQueue) {
-            if (requestQueue.isEmpty() || requestQueue.peek().nodeId != nodeId)
+            if (requestQueue.isEmpty())
+                return false;
+
+            Request head = requestQueue.peek();
+
+            if (myRequest.compareTo(head) != 0)
                 return false;
         }
         return repliesReceivedForMyRequest.size() == knownNodes.size();
