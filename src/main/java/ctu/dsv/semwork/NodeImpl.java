@@ -16,7 +16,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private final PriorityQueue<Request> requestQueue;
     private final Logger logger;
     private final FileWriter logWriter;
-
     private int logicalClock;
     private int sharedVariable;
     private int messageDelayMs;
@@ -161,7 +160,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void enterCS() throws RemoteException {
         detectDeadNodes();
-
         incrementClock();
         int requestTimestamp = logicalClock;
         wantCS = true;
@@ -186,7 +184,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void handleRequestCS(long requestingNodeId, int timestamp) throws RemoteException {
         updateClock(timestamp);
-
         logger.logInfo("Received REQUEST from " + requestingNodeId + " (ts=" + timestamp + ")", logicalClock);
 
         Request incoming = new Request(requestingNodeId, timestamp);
@@ -204,7 +201,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void handleReplyCS(long replyingNodeId, int timestamp) throws RemoteException {
         updateClock(timestamp);
-
         repliesReceivedForMyRequest.add(replyingNodeId);
         logger.logInfo("Received REPLY from " + replyingNodeId + " (ts=" + timestamp + ")", logicalClock);
         synchronized (this) { notifyAll(); }
@@ -213,7 +209,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void handleReleaseCS(long releasingNodeId, int timestamp) throws RemoteException {
         updateClock(timestamp);
-
         logger.logInfo("Received RELEASE from " + releasingNodeId + " (ts=" + timestamp + ")", logicalClock);
         synchronized (requestQueue) { requestQueue.removeIf(r -> r.nodeId == releasingNodeId); }
         synchronized (this) { notifyAll(); }
@@ -351,7 +346,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
                 return false;
 
             Request head = requestQueue.peek();
-
             if (myRequest.compareTo(head) != 0)
                 return false;
         }
