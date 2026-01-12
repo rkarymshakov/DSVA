@@ -15,31 +15,14 @@ public class APIHandler {
     public void start() {
         app = Javalin.create().start(port);
 
-        app.exception(Exception.class, (e, ctx) -> {
-            System.err.println("[API EXCEPTION] " + e.getClass().getName() + ": " + e.getMessage());
-            try {
-                node.logExternalException("API Exception", e);
-            } catch (Exception logError) {
-                System.err.println("[LOGGER ERROR] Failed to log exception: " + logError.getMessage());
-            }
-            ctx.status(500).result("Error: " + e.getMessage());
-        });
-
         System.out.println("REST API started on port " + port);
 
         app.post("/join/{ip}/{port}", ctx -> {
             String ip = ctx.pathParam("ip");
             int targetPort = Integer.parseInt(ctx.pathParam("port"));
-
             System.out.println("Joining node via: " + ip + ":" + targetPort);
-
-            try {
-                node.joinNetwork(ip, targetPort);
-                ctx.result("Joined network via " + ip + ":" + targetPort + "\n");
-            } catch (Exception e) {
-                node.logExternalException("API Join Failed", e);
-                ctx.status(500).result("Join failed: " + e.getMessage());
-            }
+            node.joinNetwork(ip, targetPort);
+            ctx.result("Joined network via " + ip + ":" + targetPort + "\n");
         });
 
         app.post("/leave", ctx -> {
@@ -72,9 +55,7 @@ public class APIHandler {
             new Thread(() -> {
                 try {
                     node.enterCS();
-                } catch (Exception e) {
-                    node.logExternalException("Async API Error in /enter-cs", e);
-                }
+                } catch (Exception ignored) {}
             }).start();
             ctx.result("CS entry request submitted (async)");
         });
@@ -84,7 +65,9 @@ public class APIHandler {
             ctx.result("Left Critical Section");
         });
 
-        app.get("/var", ctx -> ctx.result(String.valueOf(node.getSharedVariable())));
+        app.get("/var", ctx -> {
+            ctx.result(String.valueOf(node.getSharedVariable()));
+        });
 
         app.post("/var/{value}", ctx -> {
             int val = Integer.parseInt(ctx.pathParam("value"));

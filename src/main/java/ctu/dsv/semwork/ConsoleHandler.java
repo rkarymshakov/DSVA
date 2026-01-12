@@ -60,9 +60,7 @@ public class ConsoleHandler implements Runnable {
                     new Thread(() -> {
                         try {
                             myNode.enterCS();
-                        } catch (Exception e) {
-                            myNode.logExternalException("Manual Console Request Failed", e);
-                        }
+                        } catch (Exception ignored) {}
                     }).start();
                     break;
                 case "rel":
