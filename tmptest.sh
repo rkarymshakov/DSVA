@@ -1,61 +1,58 @@
 #!/bin/bash
 source bash_variables.sh
 
-# Настройки
-DELAY_MS=2000
 SLEEP_TIME=1
+echo "   Test Race Condition: Delayed Node 1 (Low TS) vs Fast Node 2 (High TS)"
 
-echo "================================================"
-echo "   RACE SIMULATION: Delayed Priority vs Fast Low-Priority"
-echo "================================================"
-
-# 1. Сброс задержек в 0 для чистоты
-curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/delay/0 > /dev/null
-
-# 2. МАНИПУЛЯЦИЯ ВРЕМЕНЕМ (Ключевой момент!)
-# Ставим Node 1 в начало времени (чтобы он выиграл по логике)
-# Ставим Node 2 в будущее (чтобы он проиграл по логике, хотя он быстрый)
-echo "[SETUP] Forcing clocks: Node 1 -> 1, Node 2 -> 10"
+echo -e "\n[STEP] Forcing clocks: Node 1 -> 1, Node 2 -> 20..."
 curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/clock/1
-curl -s -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/clock/10
+curl -s -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/clock/20
 
-# 3. Включаем тормоза для Node 1
-echo "[SETUP] Setting delay on Node 1 to ${DELAY_MS}ms..."
-curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/delay/${DELAY_MS}
+echo -e "\n[STEP] Setting 3s delay on Node 1..."
+curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/delay/3000
 
-echo -e "\n[ACTION] Starting Race..."
-
-# 4. Запускаем Node 1 (TS будет 2). Он "повиснет" на 2 секунды перед отправкой.
+echo -e "\n[STEP] Node 1 requests CS (Delayed, Low TS)..."
 curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/enter-cs &
-PID1=$!
-echo " -> Node 1 requested (TS=2, Delayed send)"
-
 sleep 0.5
 
-# 5. Запускаем Node 2 (TS будет 11). Он отправит запрос МГНОВЕННО.
+echo -e "\n[STEP] Node 2 requests CS (Instant, High TS)..."
 curl -s -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/enter-cs &
-PID2=$!
-echo " -> Node 2 requested (TS=11, Instant send)"
 
-echo -e "\n[WAITING] Simulation in progress..."
+echo -e "\n[STEP] Waiting 5s for negotiation..."
 sleep 5
 
-echo -e "\n[CHECK] Verifying who entered CS (Expectation: Node 1)"
-echo "------------------------------------------------"
-echo "Node 1 Status (Should be TRUE or just finished):"
-curl -s http://${NODE_IP[1]}:${NODE_API_PORT[1]}/status | grep -E "(inCriticalSection|logicalClock|Queue)"
-echo "------------------------------------------------"
-echo "Node 2 Status (Should be FALSE, waiting for Node 1):"
-curl -s http://${NODE_IP[2]}:${NODE_API_PORT[2]}/status | grep -E "(inCriticalSection|logicalClock|Queue)"
+echo -e "\n[STEP] Checking Node 1 is in CS (Expect: true):"
+curl -s http://${NODE_IP[1]}:${NODE_API_PORT[1]}/status | grep "inCriticalSection"
 
-# 6. Завершаем CS для Node 1, чтобы пустить Node 2
-echo -e "\n[ACTION] Node 1 leaves CS..."
-curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/leave-cs
-sleep 3
+echo -e "\n[STEP] Node 1 writing variable 33..."
+curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/var/33
+sleep ${SLEEP_TIME}
 
-echo -e "\n[CHECK] Node 2 should be in CS now:"
+echo -e "\n[STEP] Reading shared variable from 5. nodes (Expect: 33):"
+curl http://${NODE_IP[5]}:${NODE_API_PORT[5]}/var
+echo ""
+
+echo -e "\n[STEP] Node 1 leaves CS..."
+curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/leave-cs
+sleep 4
+
+echo -e "\n[STEP] Checking Node 2 is in CS (Expect: true):"
 curl -s http://${NODE_IP[2]}:${NODE_API_PORT[2]}/status | grep "inCriticalSection"
 
-# Финальная чистка
-curl -s -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/leave-cs
-curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/delay/0
+echo -e "\n[STEP] Node 2 writing variable 44..."
+curl -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/var/44
+sleep ${SLEEP_TIME}
+
+echo -e "\n[STEP] Reading shared variable from 5. nodes (Expect: 44):"
+curl http://${NODE_IP[5]}:${NODE_API_PORT[5]}/var
+echo ""
+
+echo -e "\n[STEP] Node 2 leaves CS..."
+curl -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/leave-cs
+sleep ${SLEEP_TIME}
+
+echo -e "\n[STEP] Resetting Node 1 delay to 0..."
+curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/delay/0
+echo ""
+
+echo "Test Complete."

@@ -153,7 +153,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         }
         repliesReceivedForMyRequest.clear();
 
-//        simulateDelay(); //added
         broadcast((id, node) -> {
             simulateDelay();
             logger.logInfo(" -> Sending REQUEST to node " + id, logicalClock);
