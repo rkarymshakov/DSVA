@@ -162,7 +162,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         logger.logInfo("ENTERED CRITICAL SECTION with timestamp: " + requestTimestamp, logicalClock);
     }
 
-    public synchronized void forceLogicalClock(int time) {
+    public synchronized void forceLogicalClock(int time) { //for testing
         this.logicalClock = time;
         logger.logInfo("DEBUG: Clock forced to " + time, logicalClock);
     }
@@ -291,7 +291,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         for (Long neighborId : new ArrayList<>(knownNodes.keySet())) {
             Node neighborRef = knownNodes.get(neighborId);
             if (neighborRef == null) continue;
-
             try {
                 neighborRef.getNodeId();
             } catch (RemoteException e) {
@@ -318,7 +317,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     private synchronized boolean canEnterCS() {
         if (!wantCS || myRequest == null)
             return false;
-
         synchronized (requestQueue) {
             if (requestQueue.isEmpty())
                 return false;
