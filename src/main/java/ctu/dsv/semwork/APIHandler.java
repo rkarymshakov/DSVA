@@ -77,10 +77,16 @@ public class APIHandler {
         app.get("/var", ctx -> ctx.result(String.valueOf(node.getSharedVariable())));
 
         app.post("/var/{value}", ctx -> {
-            int val = Integer.parseInt(ctx.pathParam("value"));
-            node.setSharedVariable(val);
-            ctx.result("Shared variable set to " + val);
+            try {
+                int val = Integer.parseInt(ctx.pathParam("value"));
+                node.setSharedVariable(val);
+                ctx.result("Shared variable set to " + val);
+            } catch (Exception e) {
+                node.logExternalException("API Set Variable Failed", e);
+                ctx.status(500).result("Set variable failed: " + e.getMessage());
+            }
         });
+
 
         app.get("/status", ctx -> {
             String sb =
