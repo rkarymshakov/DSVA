@@ -17,8 +17,7 @@ public class APIHandler {
 
         System.out.println("REST API started on port " + port);
 
-        //tmp
-        app.post("/clock/{time}", ctx -> {
+        app.post("/clock/{time}", ctx -> { //for testing
             int t = Integer.parseInt(ctx.pathParam("time"));
             node.forceLogicalClock(t);
             ctx.result("Logical clock set to " + t);
