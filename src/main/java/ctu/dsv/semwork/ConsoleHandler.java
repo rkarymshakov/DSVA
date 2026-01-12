@@ -20,7 +20,6 @@ public class ConsoleHandler implements Runnable {
 
     private void parse_commandline(String commandline) {
         if (commandline.trim().isEmpty()) return;
-
         String[] parts = commandline.split("\\s+");
         String command = parts[0].toLowerCase();
 

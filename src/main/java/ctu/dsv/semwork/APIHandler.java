@@ -21,7 +21,6 @@ public class APIHandler {
             node.forceLogicalClock(t);
             ctx.result("Logical clock in Node: " + node.getNodeId() + " set to " + t + "\n");
         });
-
         app.post("/join/{ip}/{port}", ctx -> {
             String ip = ctx.pathParam("ip");
             int targetPort = Integer.parseInt(ctx.pathParam("port"));
@@ -29,33 +28,27 @@ public class APIHandler {
             node.joinNetwork(ip, targetPort);
             ctx.result("Joined network via " + ip + ":" + targetPort + "\n");
         });
-
         app.post("/leave", ctx -> {
             node.leave();
             ctx.result("Left the network.");
         });
-
         app.post("/kill", ctx -> {
             node.kill();
             ctx.result("Node killed (simulated failure).");
         });
-
         app.post("/revive", ctx -> {
             node.revive();
             ctx.result("Node revived.");
         });
-
         app.post("/delay/{ms}", ctx -> {
             int ms = Integer.parseInt(ctx.pathParam("ms"));
             node.setMessageDelayMs(ms);
             ctx.result("Message delay set to " + ms + "ms");
         });
-
         app.post("/detect", ctx -> {
             node.detectDeadNodes();
             ctx.result("Failure detection cycle triggered.");
         });
-
         app.post("/enter-cs", ctx -> {
             new Thread(() -> {
                 try {
@@ -64,22 +57,18 @@ public class APIHandler {
             }).start();
             ctx.result("CS entry request submitted (async)");
         });
-
         app.post("/leave-cs", ctx -> {
             node.leaveCS();
             ctx.result("Left Critical Section");
         });
-
         app.get("/var", ctx -> {
             ctx.result(String.valueOf(node.getSharedVariable()));
         });
-
         app.post("/var/{value}", ctx -> {
             int val = Integer.parseInt(ctx.pathParam("value"));
             node.setSharedVariable(val);
             ctx.result("Shared variable set to " + val);
         });
-
         app.get("/status", ctx -> {
             String sb =
                 "Node ID: " + node.getNodeId() + "\n" +

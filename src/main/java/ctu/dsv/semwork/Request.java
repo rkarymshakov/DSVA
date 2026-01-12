@@ -9,10 +9,8 @@ import java.util.Objects;
  * Implements Comparable to allow automatic sorting in the PriorityQueue.
  */
 public class Request implements Serializable, Comparable<Request> {
-
     @Serial
     private static final long serialVersionUID = 1L;
-
     public final long nodeId;
     public final int timestamp;
 
