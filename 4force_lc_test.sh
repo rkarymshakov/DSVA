@@ -4,6 +4,10 @@ source bash_variables.sh
 SLEEP_TIME=1
 echo "   Test Race Condition: Delayed Node 1 (Low TS) vs Fast Node 2 (High TS)"
 
+echo -e "\n[STEP] Forcing clocks: Node 1 -> 200, Node 2 -> 300..."
+curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/clock/200
+curl -s -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/clock/300
+
 echo -e "\n[STEP] Setting 3s delay on Node 1..."
 curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/delay/3000
 
@@ -20,11 +24,11 @@ sleep 5
 echo -e "\n[STEP] Checking Node 1 is in CS (Expect: true):"
 curl -s http://${NODE_IP[1]}:${NODE_API_PORT[1]}/status | grep "inCriticalSection"
 
-echo -e "\n[STEP] Node 1 writing variable 33..."
-curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/var/33
+echo -e "\n[STEP] Node 1 writing variable 7..."
+curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/var/7
 sleep ${SLEEP_TIME}
 
-echo -e "\n[STEP] Reading shared variable from 5. nodes (Expect: 33):"
+echo -e "\n[STEP] Reading shared variable from 5. nodes (Expect: 7):"
 curl http://${NODE_IP[5]}:${NODE_API_PORT[5]}/var
 echo ""
 
@@ -35,11 +39,11 @@ sleep 4
 echo -e "\n[STEP] Checking Node 2 is in CS (Expect: true):"
 curl -s http://${NODE_IP[2]}:${NODE_API_PORT[2]}/status | grep "inCriticalSection"
 
-echo -e "\n[STEP] Node 2 writing variable 44..."
-curl -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/var/44
+echo -e "\n[STEP] Node 2 writing variable 8..."
+curl -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/var/8
 sleep ${SLEEP_TIME}
 
-echo -e "\n[STEP] Reading shared variable from 5. nodes (Expect: 44):"
+echo -e "\n[STEP] Reading shared variable from 5. nodes (Expect: 8):"
 curl http://${NODE_IP[5]}:${NODE_API_PORT[5]}/var
 echo ""
 

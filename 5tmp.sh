@@ -18,23 +18,23 @@ sleep ${SLEEP_TIME}
 curl -s -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/enter-cs
 sleep ${SLEEP_TIME}
 
-echo -e "\n[STEP] Node 1 writing variable 33..."
-curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/var/33
+echo -e "\n[STEP] Node 1 writing variable 9..."
+curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/var/9
 sleep ${SLEEP_TIME}
 curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/leave-cs
 sleep ${SLEEP_TIME}
 
-echo -e "\n[STEP] Reading shared variable from 5. nodes:"
+echo -e "\n[STEP] Reading shared variable from 5. nodes: (Expect: 9):"
 curl http://${NODE_IP[5]}:${NODE_API_PORT[5]}/var
 echo ""
 sleep ${SLEEP_TIME}
-echo -e "\n[STEP] Node 2 writing variable 44..."
-curl -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/var/44
+echo -e "\n[STEP] Node 2 writing variable 10..."
+curl -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/var/10
 sleep ${SLEEP_TIME}
 curl -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/leave-cs
 sleep ${SLEEP_TIME}
 
-echo -e "\n[STEP] Reading shared variable from 5. nodes:"
+echo -e "\n[STEP] Reading shared variable from 5. nodes: (Expect: 10):"
 curl http://${NODE_IP[5]}:${NODE_API_PORT[5]}/var
 echo ""
 sleep ${SLEEP_TIME}

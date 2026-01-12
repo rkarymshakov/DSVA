@@ -70,7 +70,7 @@ chmod +x *.sh
 ./start_nodes.sh
 
 # Run test scenario
-./1test.sh
+./1test_with_topology.sh
 ```
 
 ### Attach to Running Node
@@ -153,7 +153,7 @@ curl -X POST http://localhost:3010/leave-cs
 ### Automated Test
 
 ```bash
-./1test.sh
+./1test_with_topology.sh
 ```
 
 ### Manual Test Example
