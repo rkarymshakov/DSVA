@@ -14,13 +14,12 @@ public class APIHandler {
 
     public void start() {
         app = Javalin.create().start(port);
-
         System.out.println("REST API started on port " + port);
 
         app.post("/clock/{time}", ctx -> { //for testing
             int t = Integer.parseInt(ctx.pathParam("time"));
             node.forceLogicalClock(t);
-            ctx.result("Logical clock set to " + t);
+            ctx.result("Logical clock in Node: " + node.getNodeId() + " set to " + t + "\n");
         });
 
         app.post("/join/{ip}/{port}", ctx -> {

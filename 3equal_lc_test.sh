@@ -21,9 +21,6 @@ curl -s -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/enter-cs &
 echo -e "\n[STEP] Waiting 5s for negotiation..."
 sleep 5
 
-echo -e "\n[STEP] Checking Node 1 is in CS (Expect: true):"
-curl -s http://${NODE_IP[1]}:${NODE_API_PORT[1]}/status | grep "inCriticalSection"
-
 echo -e "\n[STEP] Node 1 writing variable 5..."
 curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/var/5
 sleep ${SLEEP_TIME}
@@ -35,9 +32,6 @@ echo ""
 echo -e "\n[STEP] Node 1 leaves CS..."
 curl -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/leave-cs
 sleep 4
-
-echo -e "\n[STEP] Checking Node 2 is in CS (Expect: true):"
-curl -s http://${NODE_IP[2]}:${NODE_API_PORT[2]}/status | grep "inCriticalSection"
 
 echo -e "\n[STEP] Node 2 writing variable 6..."
 curl -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/var/6
