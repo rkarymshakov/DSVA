@@ -66,9 +66,7 @@ public class APIHandler {
             node.leaveCS();
             ctx.result("Left Critical Section");
         });
-        app.get("/var", ctx -> {
-            ctx.result(String.valueOf(node.getSharedVariable()));
-        });
+        app.get("/var", ctx -> ctx.result(String.valueOf(node.getSharedVariable())));
         app.post("/var/{value}", ctx -> {
             int val = Integer.parseInt(ctx.pathParam("value"));
             node.setSharedVariable(val);
