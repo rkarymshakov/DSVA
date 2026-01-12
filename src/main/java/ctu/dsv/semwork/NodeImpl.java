@@ -153,14 +153,19 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         }
         repliesReceivedForMyRequest.clear();
 
-        simulateDelay(); //added
+//        simulateDelay(); //added
         broadcast((id, node) -> {
-//            simulateDelay();
+            simulateDelay();
             logger.logInfo(" -> Sending REQUEST to node " + id, logicalClock);
             node.handleRequestCS(nodeId, requestTimestamp);
         });
         waitForPermission();
         logger.logInfo("ENTERED CRITICAL SECTION with timestamp: " + requestTimestamp, logicalClock);
+    }
+
+    public synchronized void forceLogicalClock(int time) {
+        this.logicalClock = time;
+        logger.logInfo("DEBUG: Clock forced to " + time, logicalClock);
     }
 
     @Override

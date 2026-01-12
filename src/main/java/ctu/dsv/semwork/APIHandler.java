@@ -17,6 +17,13 @@ public class APIHandler {
 
         System.out.println("REST API started on port " + port);
 
+        //tmp
+        app.post("/clock/{time}", ctx -> {
+            int t = Integer.parseInt(ctx.pathParam("time"));
+            node.forceLogicalClock(t);
+            ctx.result("Logical clock set to " + t);
+        });
+
         app.post("/join/{ip}/{port}", ctx -> {
             String ip = ctx.pathParam("ip");
             int targetPort = Integer.parseInt(ctx.pathParam("port"));
