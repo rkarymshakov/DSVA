@@ -63,24 +63,12 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     @Override
-    public long getNodeId() throws RemoteException {
-        return nodeId;
-    }
-
-    @Override
-    public synchronized int getLogicalClock() throws RemoteException {
-        return logicalClock;
-    }
-
-    @Override
     public Map<Long, Node> join(long joiningNodeId, Node joiningNodeRef) throws RemoteException {
         logger.logInfo("Node " + joiningNodeId + " is joining the network", logicalClock);
-
         Map<Long, Node> currentTopology = new HashMap<>(knownNodes);
         currentTopology.put(this.nodeId, this);
 
         this.addNode(joiningNodeId, joiningNodeRef);
-
         try {
             joiningNodeRef.updateSharedVariable(sharedVariable, logicalClock, nodeId);
         } catch (RemoteException e) {
@@ -143,18 +131,12 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void leave() throws RemoteException {
         if (knownNodes.isEmpty()) return;
-
         List<Node> nodesToNotify = new ArrayList<>(knownNodes.values());
         knownNodes.clear();
 
         for (Node node : nodesToNotify)
             try { node.removeNode(this.nodeId); } catch (RemoteException ignored) {}
         logger.logInfo("Node leaved network.", logicalClock);
-    }
-
-    @Override
-    public List<Long> getKnownNodes() throws RemoteException {
-        return new ArrayList<>(knownNodes.keySet());
     }
 
     @Override
@@ -185,7 +167,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void handleRequestCS(long requestingNodeId, int timestamp) throws RemoteException {
         updateClock(timestamp);
         logger.logInfo("Received REQUEST from " + requestingNodeId + " (ts=" + timestamp + ")", logicalClock);
-
         Request incoming = new Request(requestingNodeId, timestamp);
         synchronized (requestQueue) { requestQueue.add(incoming); }
 
@@ -228,7 +209,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
             requestQueue.remove(myRequest);
         }
         myRequest = null;
-
         broadcast((id, node) -> {
             simulateDelay();
             node.handleReleaseCS(nodeId, logicalClock);
@@ -238,15 +218,9 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     @Override
-    public synchronized int getSharedVariable() throws RemoteException {
-        return sharedVariable;
-    }
-
-    @Override
     public synchronized void setSharedVariable(int value) throws RemoteException {
         if (!inCriticalSection)
             throw new RemoteException("Illegal Access: Must be in Critical Section to write variable!");
-
         incrementClock();
         this.sharedVariable = value;
         logger.logInfo("Wrote shared variable: " + value, logicalClock);
@@ -344,7 +318,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         synchronized (requestQueue) {
             if (requestQueue.isEmpty())
                 return false;
-
             Request head = requestQueue.peek();
             if (myRequest.compareTo(head) != 0)
                 return false;
@@ -393,7 +366,17 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @FunctionalInterface
     protected interface NodeOperation { void execute(long nodeId, Node node) throws RemoteException; }
 
-    public void logExternalException(String context, Exception e) {
-        logger.logException(context, e, logicalClock);
-    }
+    public void logExternalException(String context, Exception e) { logger.logException(context, e, logicalClock); }
+
+    @Override
+    public List<Long> getKnownNodes() throws RemoteException { return new ArrayList<>(knownNodes.keySet()); }
+
+    @Override
+    public synchronized int getSharedVariable() throws RemoteException { return sharedVariable; }
+
+    @Override
+    public long getNodeId() throws RemoteException { return nodeId; }
+
+    @Override
+    public synchronized int getLogicalClock() throws RemoteException { return logicalClock; }
 }
