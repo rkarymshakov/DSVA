@@ -4,6 +4,11 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.net.InetAddress;
 
+/**
+ * Entry point for the distributed node application.
+ * Initializes the RMI registry, creates the Node implementation,
+ * and launches both the REST API handler (for automated testing) and the Console handler (for manual interaction).
+ */
 public class NodeRunner {
     public static void main(String[] args) {
         int rmiPort = 2010;

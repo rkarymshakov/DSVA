@@ -2,6 +2,11 @@ package ctu.dsv.semwork;
 
 import io.javalin.Javalin;
 
+/**
+ * Provides a RESTful API interface for the node using Javalin.
+ * Enables automated testing and scripting (e.g., via Bash/curl) by exposing
+ * endpoints for node operations like joining, setting delays, and critical section requests.
+ */
 public class APIHandler {
     private final NodeImpl node;
     private final int port;

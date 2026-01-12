@@ -9,6 +9,14 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.concurrent.*;
 
+/**
+ * Core implementation of a distributed node using Java RMI.
+ * Implements Lamport's Distributed Mutual Exclusion Algorithm.
+ * * Key features:
+ * - Maintains a local PriorityQueue (logical clock ordered) to decide critical section access.
+ * - Manages network topology (join/leave) and failure detection.
+ * - Simulates network delays to test race conditions and synchronization logic.
+ */
 public class NodeImpl extends UnicastRemoteObject implements Node {
     private final long nodeId;
     private final Map<Long, Node> knownNodes;

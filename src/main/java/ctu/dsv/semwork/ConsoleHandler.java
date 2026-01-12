@@ -6,6 +6,11 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.rmi.RemoteException;
 
+/**
+ * Provides an interactive command-line interface (CLI) for controlling the node manually.
+ * Runs on a separate thread to accept user commands like joining/leaving the network,
+ * requesting the critical section, and simulating failures.
+ */
 public class ConsoleHandler implements Runnable {
     private boolean reading = true;
     private final BufferedReader reader;

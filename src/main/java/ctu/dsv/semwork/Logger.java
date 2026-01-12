@@ -7,6 +7,11 @@ import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Handles logging operations for the distributed system node.
+ * Writes logs to both the console and a file, including timestamps,
+ * logical clock values, and node IDs for debugging and monitoring.
+ */
 public class Logger {
     private final long nodeId;
     private final FileWriter logWriter;
