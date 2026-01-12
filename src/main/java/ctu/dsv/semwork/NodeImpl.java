@@ -141,6 +141,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     @Override
     public void enterCS() throws RemoteException {
         detectDeadNodes();
+        simulateDelay(); //added
         incrementClock();
         int requestTimestamp = logicalClock;
         wantCS = true;
@@ -154,7 +155,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         repliesReceivedForMyRequest.clear();
 
         broadcast((id, node) -> {
-            simulateDelay();
+//            simulateDelay();
             logger.logInfo(" -> Sending REQUEST to node " + id, logicalClock);
             node.handleRequestCS(nodeId, requestTimestamp);
         });
