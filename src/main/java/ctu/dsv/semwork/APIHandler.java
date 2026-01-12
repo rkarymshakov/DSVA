@@ -15,6 +15,16 @@ public class APIHandler {
     public void start() {
         app = Javalin.create().start(port);
 
+        app.exception(Exception.class, (e, ctx) -> {
+            System.err.println("[API EXCEPTION] " + e.getClass().getName() + ": " + e.getMessage());
+            try {
+                node.logExternalException("API Exception", e);
+            } catch (Exception logError) {
+                System.err.println("[LOGGER ERROR] Failed to log exception: " + logError.getMessage());
+            }
+            ctx.status(500).result("Error: " + e.getMessage());
+        });
+
         System.out.println("REST API started on port " + port);
 
         app.post("/join/{ip}/{port}", ctx -> {
@@ -77,16 +87,10 @@ public class APIHandler {
         app.get("/var", ctx -> ctx.result(String.valueOf(node.getSharedVariable())));
 
         app.post("/var/{value}", ctx -> {
-            try {
-                int val = Integer.parseInt(ctx.pathParam("value"));
-                node.setSharedVariable(val);
-                ctx.result("Shared variable set to " + val);
-            } catch (Exception e) {
-                node.logExternalException("API Set Variable Failed", e);
-                ctx.status(500).result("Set variable failed: " + e.getMessage());
-            }
+            int val = Integer.parseInt(ctx.pathParam("value"));
+            node.setSharedVariable(val);
+            ctx.result("Shared variable set to " + val);
         });
-
 
         app.get("/status", ctx -> {
             String sb =
