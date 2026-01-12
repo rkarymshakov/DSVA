@@ -1,7 +1,7 @@
 #!/bin/bash
 source bash_variables.sh
 
-SLEEP_TIME=2
+SLEEP_TIME=1
 echo "   Test without topology, with delay (Using Remote IPs, 5 Nodes)"
 
 echo "[STEP] Setting 2s message delay on Node 1..."
