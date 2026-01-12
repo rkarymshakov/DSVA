@@ -108,19 +108,20 @@ java -jar semwork.jar 2020
 
 ### REST API
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/join/{ip}/{port}` | POST | Join network via node |
-| `/leave` | POST | Leave network |
-| `/status` | GET | Get node status |
-| `/enter-cs` | POST | Request critical section |
-| `/leave-cs` | POST | Release critical section |
-| `/var` | GET | Get shared variable |
-| `/var/{value}` | POST | Set shared variable |
-| `/kill` | POST | Simulate crash |
-| `/revive` | POST | Revive node |
-| `/delay/{ms}` | POST | Set message delay |
-| `/detect` | POST | Trigger failure detection |
+| Endpoint            | Method | Description                                 |
+|---------------------|--------|---------------------------------------------|
+| `/join/{ip}/{port}` | POST | Join network via node                       |
+| `/leave`            | POST | Leave network                               |
+| `/status`           | GET | Get node status                             |
+| `/enter-cs`         | POST | Request critical section                    |
+| `/leave-cs`         | POST | Release critical section                    |
+| `/var`              | GET | Get shared variable                         |
+| `/var/{value}`      | POST | Set shared variable                         |
+| `/kill`             | POST | Simulate crash                              |
+| `/revive`           | POST | Revive node                                 |
+| `/delay/{ms}`       | POST | Set message delay                           |
+| `/detect`           | POST | Trigger failure detection                   |
+| `/clock/{time}`     | POST | To change logical clock of node for testing |
 
 **Example:**
 ```bash
@@ -182,20 +183,10 @@ Each node creates: `node_<NODE_ID>.log`
 
 **Example:**
 ```
-[14:32:15.123][LC=0][Node 192168056106002010] Node created
-[14:33:01.789][LC=12][Node 192168056106002010] REQUESTING CRITICAL SECTION
-[14:33:02.456][LC=14][Node 192168056106002010] ENTERED CRITICAL SECTION
 [14:33:03.789][LC=15][Node 192168056106002010] Wrote shared variable: 555
 ```
 
 ---
-
-## Troubleshooting
-
-**"RemoteException: Node is dead"**
-```bash
-curl -X POST http://<node_ip>:<api_port>/revive
-```
 
 **"Connection refused"**
 ```bash
@@ -233,8 +224,7 @@ curl -X POST http://localhost:3010/detect
 
 **Properties:**
 - Safety: ≤1 node in CS at any time
-- Fairness: Requests granted in timestamp order
-- Message Complexity: 3(N-1) per CS entry
+- Fairness: Requests granted in timestamp order (if ts the same, node with lower ID wins)
 
 ---
 
@@ -253,7 +243,8 @@ DSVA/
 ├── pom.xml
 ├── bash_variables.sh            # Deployment config
 ├── start_nodes.sh               # Deployment script
-├── 1test.sh             # Test script with topology setting up, without delay
-├── 2test.sh             # Test script without topology, without delay
-├── 3test.sh             # Test script without topology, with delay
+├── 1test_with_topologu.sh             # Test script with topology setting up, without delay
+├── 2test.sh             # Test script without topology, rest the same as first test
+├── 3equal_lc_test.sh             # Test script without topology, with delay + 2 nodes has equal lc when trying to enter cs
+└── 4force_lc_test.sh             # Test script without topology, with delay + 2 nodes has equal lc when trying to enter cs
 ```
