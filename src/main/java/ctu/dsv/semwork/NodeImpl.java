@@ -41,7 +41,6 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         }
         this.logWriter = writer;
         this.logger = new Logger(nodeId, logWriter);
-
         logger.logInfo("Node created with ID: " + nodeId, logicalClock);
     }
 
