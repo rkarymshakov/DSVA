@@ -4,9 +4,9 @@ source bash_variables.sh
 SLEEP_TIME=1
 echo "   Test Race Condition: Delayed Node 1 (Low TS) vs Fast Node 2 (High TS)"
 
-echo -e "\n[STEP] Forcing clocks: Node 1 -> 40, Node 2 -> 40..."
-curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/clock/40
-curl -s -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/clock/40
+echo -e "\n[STEP] Forcing clocks: Node 1 -> 100, Node 2 -> 100..."
+curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/clock/100
+curl -s -X POST http://${NODE_IP[2]}:${NODE_API_PORT[2]}/clock/100
 
 echo -e "\n[STEP] Setting 3s delay on Node 1..."
 curl -s -X POST http://${NODE_IP[1]}:${NODE_API_PORT[1]}/delay/3000
