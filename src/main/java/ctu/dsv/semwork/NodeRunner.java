@@ -16,7 +16,6 @@ public class NodeRunner {
                 return;
             }
         }
-
         int restPort = rmiPort + 1000;
 
         try {
@@ -28,12 +27,10 @@ public class NodeRunner {
 
             APIHandler apiHandler = new APIHandler(nodeImpl, restPort);
             apiHandler.start();
-
             ConsoleHandler consoleHandler = new ConsoleHandler(nodeImpl);
             Thread consoleThread = new Thread(consoleHandler);
             consoleThread.start();
 
-            // Shutdown Hook
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 System.out.println("\nShutting down...");
                 consoleHandler.stop();
@@ -41,7 +38,6 @@ public class NodeRunner {
                 nodeImpl.shutdown();
             }));
 
-            // RMI Setup
             Registry registry;
             try {
                 registry = LocateRegistry.createRegistry(rmiPort);
@@ -49,7 +45,6 @@ public class NodeRunner {
                 registry = LocateRegistry.getRegistry(rmiPort);
             }
             registry.rebind(String.valueOf(rmiPort), nodeImpl);
-
             System.out.println("RMI Registry: port " + rmiPort);
             System.out.println("REST API:     port " + restPort);
         } catch (Exception e) {
