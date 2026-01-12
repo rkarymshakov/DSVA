@@ -177,14 +177,14 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         broadcast((id, node) -> {
             simulateDelay();
             logger.logInfo(" -> Sending REQUEST to node " + id, logicalClock);
-            node.requestCS(nodeId, requestTimestamp);
+            node.handleRequestCS(nodeId, requestTimestamp);
         });
         waitForPermission();
         logger.logInfo("ENTERED CRITICAL SECTION with timestamp: " + requestTimestamp, logicalClock);
     }
 
     @Override
-    public void requestCS(long requestingNodeId, int timestamp) throws RemoteException {
+    public void handleRequestCS(long requestingNodeId, int timestamp) throws RemoteException {
         updateClock(timestamp);
 
         logger.logInfo("Received REQUEST from " + requestingNodeId + " (ts=" + timestamp + ")", logicalClock);
@@ -195,14 +195,14 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
         Node requester = knownNodes.get(requestingNodeId);
         if (requester != null) {
             simulateDelay();
-            try { requester.replyCS(nodeId, logicalClock); }
+            try { requester.handleReplyCS(nodeId, logicalClock); }
             catch (RemoteException e) { logger.logError("  Failed to reply to " + requestingNodeId, logicalClock); }
         }
         synchronized (this) { notifyAll(); }
     }
 
     @Override
-    public void replyCS(long replyingNodeId, int timestamp) throws RemoteException {
+    public void handleReplyCS(long replyingNodeId, int timestamp) throws RemoteException {
         updateClock(timestamp);
 
         repliesReceivedForMyRequest.add(replyingNodeId);
@@ -211,7 +211,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     @Override
-    public void releaseCS(long releasingNodeId, int timestamp) throws RemoteException {
+    public void handleReleaseCS(long releasingNodeId, int timestamp) throws RemoteException {
         updateClock(timestamp);
 
         logger.logInfo("Received RELEASE from " + releasingNodeId + " (ts=" + timestamp + ")", logicalClock);
@@ -236,7 +236,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
 
         broadcast((id, node) -> {
             simulateDelay();
-            node.releaseCS(nodeId, logicalClock);
+            node.handleReleaseCS(nodeId, logicalClock);
         });
         repliesReceivedForMyRequest.clear();
         logger.logInfo("LEFT CRITICAL SECTION", logicalClock);

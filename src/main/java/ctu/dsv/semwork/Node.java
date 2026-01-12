@@ -53,21 +53,21 @@ public interface Node extends Remote {
      * @param requestingNodeId The ID of the node requesting access.
      * @param timestamp The logical clock timestamp of the request.
      */
-    void requestCS(long requestingNodeId, int timestamp) throws RemoteException;
+    void handleRequestCS(long requestingNodeId, int timestamp) throws RemoteException;
 
     /**
      * Handles a reply from another node granting permission to enter the critical section.
      * @param replyingNodeId The ID of the node sending the reply.
      * @param timestamp The logical clock timestamp of the reply.
      */
-    void replyCS(long replyingNodeId, int timestamp) throws RemoteException;
+    void handleReplyCS(long replyingNodeId, int timestamp) throws RemoteException;
 
     /**
      * Handles notification from another node that it has released the critical section.
      * @param releasingNodeId The ID of the node releasing the critical section.
      * @param timestamp The logical clock timestamp of the release.
      */
-    void releaseCS(long releasingNodeId, int timestamp) throws RemoteException;
+    void handleReleaseCS(long releasingNodeId, int timestamp) throws RemoteException;
 
     /** Leaves the critical section after execution is finished. */
     void leaveCS() throws RemoteException;
