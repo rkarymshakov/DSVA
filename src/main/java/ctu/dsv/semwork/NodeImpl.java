@@ -96,7 +96,7 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     public void joinNetwork(String ip, int port) throws RemoteException {
         inCriticalSection = false;
         wantCS = false;
-        requestQueue.clear();
+        synchronized (requestQueue) { requestQueue.clear(); }
         repliesReceivedForMyRequest.clear();
         try {
             Registry registry = LocateRegistry.getRegistry(ip, port);
