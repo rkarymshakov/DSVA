@@ -317,18 +317,8 @@ public class NodeImpl extends UnicastRemoteObject implements Node {
     }
 
     private synchronized void waitForPermission() {
-        while (!canEnterCS()) {
-            try {
-                wait(1000);
-                if (!canEnterCS()) {
-                    detectDeadNodes();
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } catch (RemoteException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        while (!canEnterCS())
+            try { wait(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         inCriticalSection = true;
     }
 
