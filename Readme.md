@@ -27,8 +27,8 @@ Implementation of **Lamport's distributed mutual exclusion algorithm** for coord
 
 ```bash
 # Clone and build
-git clone https://github.com/rkarymshakov/DSVA.git
-cd DSVA
+git clone https://github.com/krakhman/lamport-mutex.git
+cd lamport-mutex
 mvn clean package
 
 # JAR location: target/SemExample-0.9-jar-with-dependencies.jar
